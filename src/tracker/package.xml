@@ -4,7 +4,7 @@
   <name>tracker</name>
   <version>0.1.0</version>
   <description>Tracker node for the AI pipeline project</description>
-  <maintainer email="sylee@skhu.ac.kr">Sangyun Lee</maintainer>
+  <maintainer email="suwdle1917@gmail.com">Seokjun Song</maintainer>
   <license>MIT</license>
 
   <test_depend>ament_copyright</test_depend>

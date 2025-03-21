@@ -4,7 +4,7 @@
   <name>video_publisher</name>
   <version>0.1.0</version>
   <description>video_publisher node for the AI pipeline project</description>
-  <maintainer email="sylee@skhu.ac.kr">Sangyun Lee</maintainer>
+  <maintainer email="suwdle1917@gmail.com">Seokjun Song</maintainer>
   <license>MIT</license>
   <buildtool_depend>rosidl_default_generators</buildtool_depend>
   <depend>rosidl_default_runtime</depend>
