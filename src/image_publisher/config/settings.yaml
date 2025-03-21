@@ -1,0 +1,4 @@
+image_publisher_node:
+  ros__parameters:
+    image_directory: './src/image_publisher/images'
+    publish_rate: 30.0

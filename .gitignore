@@ -1,0 +1,66 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Virtual environment
+.env/
+.venv/
+env/
+venv/
+ENV/
+*.egg-info/
+*.egg
+*venv/
+# ROS2 build, install, and log directories
+/build/
+/install/
+/log/
+
+# Colcon build files
+.colcon/
+.colcon_ignore
+*.colcon_install_layout
+
+# ROS2-related files
+*.db
+*.bag
+*.yaml~
+*_node_executable
+
+# Editor and IDE specific files
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Operating System files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Coverage and test reports
+htmlcov/
+.tox/
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Config files
+*.bak
+*.swp
+
+# Others
+*.log
+*.tmp
+yolov8n-pose.pt
+# msg
+/vision_msgs

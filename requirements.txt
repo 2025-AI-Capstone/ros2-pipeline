@@ -1,0 +1,12 @@
+streamlit
+ultralytics
+torch==2.4.1
+pillow==10.3.0
+setuptools==70.0.0
+torchvision==0.19.1
+torchaudio==2.4.1
+scikit-learn
+deep_sort_realtime
+filterpy
+streamlit_option_menu
+numpy==1.23.5 

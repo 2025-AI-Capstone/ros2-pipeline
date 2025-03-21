@@ -1,0 +1,5 @@
+detector_node:
+  ros__parameters:
+    selection_criteria: 'conf_threshold'
+    threshold: 0.5
+    top_num : 5

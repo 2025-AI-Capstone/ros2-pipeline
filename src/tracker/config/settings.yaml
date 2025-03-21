@@ -1,0 +1,3 @@
+tracker_node:
+  ros__parameters:
+    tracker_type: 'sort'
