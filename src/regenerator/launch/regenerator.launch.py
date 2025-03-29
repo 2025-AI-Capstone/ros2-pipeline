@@ -6,13 +6,13 @@ from launch_ros.actions import Node
 def generate_launch_description():
     return LaunchDescription([
         Node(
-            package='image_publisher',
-            executable='image_publisher_node',
-            name='image_publisher_node',
+            package='regenerator',
+            executable='regenerator_node',
+            name='regenerator_node',
             output='screen',
             parameters=[
                 os.path.join(
-                get_package_share_directory('image_publisher'),
+                get_package_share_directory('regenerator'),
                 'config',
                 'settings.yaml'
                 )

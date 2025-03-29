@@ -66,7 +66,7 @@
 - 실행
   - 방식 1(별도 명시한 설정파일 사용): `ros2 run camera camera_node --ros-args --params-file src/camera/config/settings.yaml`
   - 방식 2(자동 설치된 설정파일 사용): `ros2 launch camera camera.launch.py` 
-  - image_publisher node 실행 : `ros2 launch image_publisher image_publisher.launch.py`
+  - regenerator node 실행 : `ros2 launch regenerator regenerator.launch.py`
   - detector node 실행 :  `ros2 launch detector detector.launch.py`
   - tracker node 실행 : `ros2 launch tracker tracker.launch.py`
   - falldetector node 실행 : `ros2 launch falldetector falldetector.launch.py` 

@@ -2,7 +2,7 @@ import os
 from glob import glob
 from setuptools import find_packages, setup
 
-package_name = 'image_publisher'
+package_name = 'regenerator'
 
 setup(
     name=package_name,
@@ -19,12 +19,12 @@ setup(
     zip_safe=True,
     maintainer='Seokjun Song',
     maintainer_email='suwdle1917@gmail.com',
-    description='image_publisher node for the AI pipeline project',
+    description='regenerator node for the AI pipeline project',
     license='MIT',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'image_publisher_node = image_publisher.image_publisher_node:main'
+            'regenerator_node = regenerator.regenerator_node:main'
         ],
     },
 )

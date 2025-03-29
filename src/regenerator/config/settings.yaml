@@ -1,0 +1,4 @@
+regenerator_node:
+  ros__parameters:
+    image_directory: './src/regenerator/images'
+    publish_rate: 30.0
