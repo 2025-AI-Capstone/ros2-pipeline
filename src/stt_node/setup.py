@@ -16,7 +16,8 @@ setup(
         'openai-whisper',
         'pyaudio',
         'numpy',
-        'pvporcupine'  # Wake word detection
+        'pvporcupine',  # Wake word detection
+        'python-dotenv'  # 환경변수 관리
     ],
     zip_safe=True,
     maintainer='seokjun',

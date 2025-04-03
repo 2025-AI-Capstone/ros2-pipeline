@@ -9,10 +9,15 @@ import threading
 import time
 import pvporcupine
 import struct
+import os
+from dotenv import load_dotenv
 
 class STTNode(Node):
     def __init__(self):
         super().__init__('stt_node')
+        
+        # 환경변수 로드
+        load_dotenv()
         
         # 퍼블리셔 설정
         self.publisher = self.create_publisher(String, 'speech_text', 10)
@@ -22,8 +27,13 @@ class STTNode(Node):
         self.model = whisper.load_model("base")
         
         # Porcupine 초기화 (wake word: "포커스")
+        access_key = os.getenv('PICOVOICE_ACCESS_KEY')
+        if not access_key:
+            self.get_logger().error('PICOVOICE_ACCESS_KEY environment variable not set')
+            raise RuntimeError('PICOVOICE_ACCESS_KEY not set')
+            
         self.porcupine = pvporcupine.create(
-            access_key='HNgovFEBCaJMoR6OmTdZ0FNE6MFMzOMFRuYWaqaXu/dZScmmRYEXMQ==',  # 실제 키로 교체 필요
+            access_key=access_key,
             keywords=['focus']
         )
         
