@@ -27,9 +27,9 @@ pip install -r requirements.txt
 
 ```bash
 # ROS2 워크스페이스에서
-colcon build --packages-select stt_node
+colcon build --packages-select stt
 source install/setup.bash
-ros2 run stt_node stt_node
+ros2 run stt stt
 ```
 
 ## 사용 방법

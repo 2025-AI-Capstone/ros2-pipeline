@@ -1,6 +1,6 @@
 from setuptools import setup
 
-package_name = 'tts_node'
+package_name = 'tts'
 
 setup(
     name=package_name,
@@ -20,7 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'tts_node = tts_node.tts_node:main',
+            'tts = tts.tts:main',
         ],
     },
     install_requires=[

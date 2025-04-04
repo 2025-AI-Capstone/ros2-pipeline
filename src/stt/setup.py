@@ -1,6 +1,6 @@
 from setuptools import setup
 
-package_name = 'stt_node'
+package_name = 'stt'
 
 setup(
     name=package_name,
@@ -27,7 +27,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'stt_node = stt_node.stt_node:main',
+            'stt = stt.stt:main',
         ],
     },
 ) 

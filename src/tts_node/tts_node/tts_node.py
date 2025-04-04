@@ -8,7 +8,7 @@ import os
 
 class TTSNode(Node):
     def __init__(self):
-        super().__init__('tts_node')
+        super().__init__('tts')
         
         # 구독자 설정
         self.subscription = self.create_subscription(
