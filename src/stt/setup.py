@@ -21,7 +21,7 @@ setup(
     ],
     zip_safe=True,
     maintainer='seokjun',
-    maintainer_email='seokjun@todo.todo',
+    maintainer_email='suwdle1917@gmail.com',
     description='ROS2 Speech-to-Text Node using Whisper with Wake Word Detection',
     license='TODO: License declaration',
     tests_require=['pytest'],
