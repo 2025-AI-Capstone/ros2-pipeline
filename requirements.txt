@@ -10,3 +10,10 @@ deep_sort_realtime
 filterpy
 streamlit_option_menu
 numpy==1.23.5 
+openai-whisper
+pyaudio
+numpy
+pvporcupine # Wake word detection
+python-dotenv # 환경변수 관리
+gTTS
+pygame

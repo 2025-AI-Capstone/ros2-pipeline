@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 
 class STTNode(Node):
     def __init__(self):
-        super().__init__('stt')
+        super().__init__('stt_node')
         
         # 환경변수 로드
         load_dotenv()
