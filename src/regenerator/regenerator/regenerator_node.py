@@ -13,7 +13,7 @@ import json
 
 class Regenerator(Node):
     def __init__(self):
-        super().__init__('regenerator')
+        super().__init__('regenerator_node')
     
         image_sub = message_filters.Subscriber(self, Image, 'camera/frames')
         bbox_sub = message_filters.Subscriber(self, CustomDetection2D, 'detector/bboxes')
