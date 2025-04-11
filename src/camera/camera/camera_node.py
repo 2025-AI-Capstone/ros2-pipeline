@@ -5,6 +5,8 @@ from cv_bridge import CvBridge
 import cv2
 import time
 from std_srvs.srv import SetBool
+from std_msgs.msg import String
+import base64
 
 class CameraNode(Node):
     def __init__(self):
@@ -16,7 +18,7 @@ class CameraNode(Node):
         self.frame_rate = self.get_parameter('frame_rate').value
 
         self.publisher = self.create_publisher(Image, 'camera/image_raw', 10)
-
+        self.publisher = self.create_publisher(String, 'camera/stream', 10)
         # Create CheckCamera service
         self.srv = self.create_service(SetBool, 'camera/check_camera', self.check_camera_callback)
         self.bridge = CvBridge()
@@ -43,8 +45,11 @@ class CameraNode(Node):
 
         # Convert frame to ROS2 Image message
         msg = self.bridge.cv2_to_imgmsg(frame, encoding='bgr8')
+        _, buffer = cv2.imencode('.jpg', msg)
+        image_base64 = base64.b64encode(buffer).decode('utf-8')
         msg.header.stamp = self.get_clock().now().to_msg()
         self.publisher.publish(msg)
+        self.publisher.publish(image_base64)
         self.frame_count += 1
         
     def destroy_node(self):
