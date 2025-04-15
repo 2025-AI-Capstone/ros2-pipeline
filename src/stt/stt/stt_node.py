@@ -18,18 +18,18 @@ class STTNode(Node):
     def __init__(self):
         super().__init__('stt_node')
         
-        # 로깅 설정
+        # set logging
         self.setup_logging()
         
-        # 환경변수 로드
+        # load enviromental variables
         load_dotenv()
         self.logger.info('Environment variables loaded')
         
-        # 퍼블리셔 설정
+        # set publisher
         self.publisher = self.create_publisher(String, 'speech_text', 10)
         self.logger.info('Publisher created for topic "speech_text" with queue size 10')
         
-        # Whisper 모델 로드
+        # load openai whisper model(base)
         self.get_logger().info('Loading Whisper model...')
         self.logger.info('Starting to load Whisper "base" model')
         start_time = time.time()
@@ -37,7 +37,6 @@ class STTNode(Node):
         load_time = time.time() - start_time
         self.logger.info(f'Whisper model loaded in {load_time:.2f} seconds')
         
-        # Porcupine 초기화 (wake word: "포커스")
         access_key = os.getenv('PICOVOICE_ACCESS_KEY')
         if not access_key:
             self.logger.error('PICOVOICE_ACCESS_KEY environment variable not set')
@@ -56,38 +55,36 @@ class STTNode(Node):
             raise
         
         # 오디오 설정
-        self.CHUNK = 512  # Porcupine 권장 크기
-        self.FORMAT = pyaudio.paInt16  # Porcupine 요구사항
+        self.CHUNK = 512  # Porcupine Chunk
+        self.FORMAT = pyaudio.paInt16  # Porcupine Format
         self.CHANNELS = 1
-        self.RATE = self.porcupine.sample_rate  # Porcupine 샘플레이트 사용
+        self.RATE = self.porcupine.sample_rate  # Porcupine sample rate
         self.RECORD_SECONDS = 10
         self.logger.info(f'Audio configuration: CHUNK={self.CHUNK}, FORMAT=Int16, CHANNELS={self.CHANNELS}, '
                          f'RATE={self.RATE}, RECORD_SECONDS={self.RECORD_SECONDS}')
         
-        # 상태 변수
         self.is_listening = False
         self.wake_word_count = 0
         self.transcription_count = 0
         self.publish_count = 0
         
-        # PyAudio 초기화
+        # Initialize PyAudio
         self.logger.info('Initializing PyAudio')
         self.audio = pyaudio.PyAudio()
         
-        # 사용 가능한 입력 장치 로깅
         self.log_audio_devices()
         
-        # 녹음 스레드 시작
+        # start recording thread
         self.logger.info('Starting audio processing thread')
         self.recording_thread = threading.Thread(target=self.process_audio)
         self.recording_thread.daemon = True
         self.recording_thread.start()
         
-        self.get_logger().info('STT Node is ready. Waiting for wake word "포커스"...')
+        self.get_logger().info('STT Node is ready. Waiting for wake word "Computer"...')
         self.logger.info('STT Node initialization complete, waiting for wake word')
     
     def setup_logging(self):
-        # 로그 파일명에 날짜와 시간 포함
+
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         log_filename = f'stt_node_{timestamp}.log'
         
@@ -160,18 +157,16 @@ class STTNode(Node):
                         self.is_listening = True
                         self.get_logger().info('Wake word detected! Starting to listen...')
                         
-                        # 시작 시간 기록
                         recording_start_time = time.time()
                         self.logger.info(f'Recording started at {datetime.datetime.now().strftime("%H:%M:%S.%f")[:-3]}')
                         
-                        # 음성 녹음 시작
+                        # start recording
                         frames = []
                         total_chunks = int(self.RATE / self.CHUNK * self.RECORD_SECONDS)
                         for chunk_idx in range(total_chunks):
                             data = stream.read(self.CHUNK, exception_on_overflow=False)
                             frames.append(data)
                             
-                            # 진행 상황 로깅 (10% 간격으로)
                             if chunk_idx % int(total_chunks / 10) == 0:
                                 progress = int((chunk_idx / total_chunks) * 100)
                                 self.logger.debug(f'Recording progress: {progress}%')
@@ -180,17 +175,16 @@ class STTNode(Node):
                         self.logger.info(f'Recording finished in {recording_duration:.2f} seconds. Processing...')
                         self.get_logger().info('Recording finished. Processing...')
                         
-                        # 녹음된 데이터를 numpy array로 변환
+                        # convert to numpy array
                         audio_data = np.frombuffer(b''.join(frames), dtype=np.int16)
                         self.logger.debug(f'Raw audio data shape: {audio_data.shape}, dtype: {audio_data.dtype}')
                         
-                        # 오디오 통계 로깅
                         audio_min = np.min(audio_data)
                         audio_max = np.max(audio_data)
                         audio_mean = np.mean(np.abs(audio_data))
                         self.logger.info(f'Audio statistics - Min: {audio_min}, Max: {audio_max}, Mean abs: {audio_mean:.2f}')
                         
-                        # 정규화
+                        # Normalization
                         audio_data = audio_data.astype(np.float32) / 32768.0
                         self.logger.debug(f'Normalized audio data range: [{np.min(audio_data):.4f}, {np.max(audio_data):.4f}]')
                         
@@ -218,7 +212,7 @@ class STTNode(Node):
                                                      f'end: {segment.get("end", 0):.2f}s)')
                             
                             if text:
-                                # 인식된 텍스트 퍼블리시
+                                # publish text
                                 msg = String()
                                 msg.data = text
                                 publish_time = datetime.datetime.now().strftime("%H:%M:%S.%f")[:-3]
