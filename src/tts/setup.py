@@ -23,7 +23,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'tts = tts.tts_node:main',
+            'tts_node = tts.tts_node:main',
         ],
     },
     install_requires=['setuptools'],
