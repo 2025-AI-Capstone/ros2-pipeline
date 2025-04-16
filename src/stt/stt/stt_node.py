@@ -26,12 +26,9 @@ class STTNode(Node):
         self.logger.info('Environment variables loaded')
         
         # set publisher
-        self.publisher = self.create_publisher(String, 'speech_text', 10)
-        self.logger.info('Publisher created for topic "speech_text" with queue size 10')
+        self.publisher = self.create_publisher(String, 'stt/speech_text', 10)
         
         # load openai whisper model(base)
-        self.get_logger().info('Loading Whisper model...')
-        self.logger.info('Starting to load Whisper "base" model')
         start_time = time.time()
         self.model = whisper.load_model("base")
         load_time = time.time() - start_time
@@ -42,7 +39,6 @@ class STTNode(Node):
             self.logger.error('PICOVOICE_ACCESS_KEY environment variable not set')
             raise RuntimeError('PICOVOICE_ACCESS_KEY not set')
             
-        self.logger.info('Initializing Porcupine wake word detector')
         try:
             self.porcupine = pvporcupine.create(
                 access_key=access_key,
@@ -59,7 +55,7 @@ class STTNode(Node):
         self.FORMAT = pyaudio.paInt16  # Porcupine Format
         self.CHANNELS = 1
         self.RATE = self.porcupine.sample_rate  # Porcupine sample rate
-        self.RECORD_SECONDS = 10
+        self.RECORD_SECONDS = 7
         self.logger.info(f'Audio configuration: CHUNK={self.CHUNK}, FORMAT=Int16, CHANNELS={self.CHANNELS}, '
                          f'RATE={self.RATE}, RECORD_SECONDS={self.RECORD_SECONDS}')
         
@@ -71,16 +67,13 @@ class STTNode(Node):
         # Initialize PyAudio
         self.logger.info('Initializing PyAudio')
         self.audio = pyaudio.PyAudio()
-        
-        self.log_audio_devices()
-        
+                
         # start recording thread
         self.logger.info('Starting audio processing thread')
         self.recording_thread = threading.Thread(target=self.process_audio)
         self.recording_thread.daemon = True
         self.recording_thread.start()
         
-        self.get_logger().info('STT Node is ready. Waiting for wake word "Computer"...')
         self.logger.info('STT Node initialization complete, waiting for wake word')
     
     def setup_logging(self):
@@ -110,23 +103,8 @@ class STTNode(Node):
         self.logger.addHandler(console_handler)
         
         self.logger.info(f'Logging initialized, writing to {log_filename}')
-    
-    def log_audio_devices(self):
-        """사용 가능한 오디오 입력 장치를 로깅"""
-        self.logger.info("Available audio input devices:")
-        for i in range(self.audio.get_device_count()):
-            device_info = self.audio.get_device_info_by_index(i)
-            if device_info['maxInputChannels'] > 0:  # 입력 장치만 표시
-                self.logger.info(f"  Device {i}: {device_info['name']}")
-                self.logger.info(f"    Input channels: {device_info['maxInputChannels']}")
-                self.logger.info(f"    Default sample rate: {device_info['defaultSampleRate']}")
         
-        # 기본 입력 장치 정보
-        default_input = self.audio.get_default_input_device_info()
-        self.logger.info(f"Default input device: {default_input['name']} (index: {default_input['index']})")
-    
     def process_audio(self):
-        self.logger.info('Starting audio processing loop')
         try:
             stream = self.audio.open(
                 format=self.FORMAT,
@@ -226,11 +204,9 @@ class STTNode(Node):
                                 self.logger.warning('Transcription produced empty text, nothing published')
                         
                         except Exception as e:
-                            self.logger.error(f'Transcription error: {str(e)}', exc_info=True)
                             self.get_logger().error(f'Transcription error: {str(e)}')
                         
                         self.is_listening = False
-                        self.logger.info('Finished processing, waiting for next wake word')
                         self.get_logger().info('Waiting for wake word...')
                 
                 except Exception as e:
