@@ -7,12 +7,15 @@ torchvision==0.19.1
 torchaudio==2.4.1
 scikit-learn
 deep_sort_realtime
+langcahin
+transformers
+langchain-community
 filterpy
 streamlit_option_menu
 numpy==1.23.5 
 openai-whisper
 pyaudio
-numpy
+numba==0.56.4
 pvporcupine # Wake word detection
 python-dotenv # 환경변수 관리
 gTTS
