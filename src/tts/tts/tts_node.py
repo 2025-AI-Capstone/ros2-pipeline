@@ -13,7 +13,7 @@ class TTSNode(Node):
         # 구독자 설정
         self.subscription = self.create_subscription(
             String,
-            'stt/speech_text',
+            'agent/response',
             self.text_callback,
             10
         )

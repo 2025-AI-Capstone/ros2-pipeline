@@ -48,7 +48,7 @@ class AgentNode(Node):
             response_msg = String()
             response_msg.data = response
             self.response_publisher.publish(response_msg)
-            
+            self.get_logger().info(f"publish succeed")
         except Exception as e:
             self.get_logger().error(f"응답 생성 오류: {str(e)}")
     
