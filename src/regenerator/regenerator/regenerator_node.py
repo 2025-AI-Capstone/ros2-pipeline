@@ -33,86 +33,47 @@ class Regenerator(Node):
         self.dashboard_pub = self.create_publisher(String, 'dashboard/data', 10)
     
     def synced_callback(self, image_msg, bbox_msg, falldet_msg, tracked_msg):
-        # Convert the ROS Image message to OpenCV format
+        # Convert ROS image to OpenCV
         cv_image = self.cv_bridge.imgmsg_to_cv2(image_msg, desired_encoding='bgr8')
-        _, buffer = cv2.imencode('.jpg', cv_image)
-        image_base64 = base64.b64encode(buffer).decode('utf-8')
-        bbox_data = bbox_msg.detections.data
-        serialized_keypoints = falldet_msg.position
-        serialized_falldet = falldet_msg.name
+
+        # Parse bbox
         serialized_bbox = []
-        
-        for i in range(0, len(bbox_data), 5):
-            bbox = {
-                'x1': bbox_data[i],
-                'y1': bbox_data[i + 1],
-                'x2': bbox_data[i + 2],
-                'y2': bbox_data[i + 3],
-                'conf': bbox_data[i + 4]
-                }
-            serialized_bbox.append(bbox)
+        for i in range(0, len(bbox_msg.detections.data), 5):
+            x1, y1, x2, y2, conf = bbox_msg.detections.data[i:i+5]
+            serialized_bbox.append({'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2, 'conf': conf})
+            cv2.rectangle(cv_image, (int(x1), int(y1)), (int(x2), int(y2)), (255, 0, 0), 2)
 
-        dashboard_data = {
-            'image': image_base64,
-            'bboxes': serialized_bbox,
-            'keypoints': serialized_keypoints,
-            'falldetections': falldet_msg.position,
-            'tracked_objects': [
-                {'id': obj.id, 'bbox': {'x': obj.bbox.x, 'y': obj.bbox.y,
-                                        'width': obj.bbox.width, 'height': obj.bbox.height}}
-                for obj in tracked_msg.tracked_objects
-            ]
-        }
+        # Keypoints (17 x 3) for each person
+        keypoints_data = np.array(falldet_msg.position).reshape(-1, 17, 3)
+        display_image = draw_keypoints(cv_image, keypoints_data)
 
-        dashboard_json = String()
-        dashboard_json.data = json.dumps(dashboard_data)
-        self.dashboard_pub.publish(dashboard_json)
-
-    def synced_callback(self, image_msg, bbox_msg, falldet_msg, tracked_msg):
-        # Convert the ROS Image message to OpenCV format
-        cv_image = self.cv_bridge.imgmsg_to_cv2(image_msg, desired_encoding='bgr8')
-
-        bbox_data = bbox_msg.detections.data
-        keypoints_data = np.array(keypoints_msg.position).reshape(-1, 17, 3) if keypoints_msg.position else None
-        detections = []
-        for detection in bbox_msg.detections:
-            x1, y1, x2, y2, conf = detection
-            detections.append([x1, y1, x2, y2])
-        if detections is not None:
-                for obj in detections:  # 각 obj는 [x1, y1, x2, y2, track_id] 형태
-                    try:
-                        x1, y1, x2, y2, track_id = obj  # 리스트 언패킹
-                        
-                        # 좌표를 정수로 변환
-                        x1, y1, x2, y2 = map(int, [x1, y1, x2, y2])
-                        
-                        # 바운딩 박스 그리기
-                        cv2.rectangle(cv_image, (x1, y1), (x2, y2), (0, 0, 255), 2)
-                    except (ValueError, TypeError) as e:
-                        print(f"Error in processing Detected objects")
-                        continue
-                    
-        if keypoints_data is not None:
-            display_image = draw_keypoints(cv_image, keypoints_data)
-
-        
-        _, buffer = cv2.imencode('.jpg', cv_image)
+        # Encode image to base64
+        _, buffer = cv2.imencode('.jpg', display_image)
         image_base64 = base64.b64encode(buffer).decode('utf-8')
+
+        # Tracked objects
+        tracked_objs = [
+            {'id': obj.id, 'bbox': {
+                'x': obj.bbox.x,
+                'y': obj.bbox.y,
+                'width': obj.bbox.width,
+                'height': obj.bbox.height
+            }} for obj in tracked_msg.tracked_objects
+        ]
+
+        # Dashboard json
         dashboard_data = {
             'image': image_base64,
             'bboxes': serialized_bbox,
-            'keypoints': serialized_keypoints,
+            'keypoints': keypoints_data.tolist(),
             'falldetections': falldet_msg.position,
-            'tracked_objects': [
-                {'id': obj.id, 'bbox': {'x': obj.bbox.x, 'y': obj.bbox.y,
-                                        'width': obj.bbox.width, 'height': obj.bbox.height}}
-                for obj in tracked_msg.tracked_objects
-            ]
+            'tracked_objects': tracked_objs
         }
 
-        dashboard_json = String()
-        dashboard_json.data = json.dumps(dashboard_data)
-        self.dashboard_pub.publish(dashboard_json)
+        dashboard_msg = String()
+        dashboard_msg.data = json.dumps(dashboard_data)
+        self.dashboard_pub.publish(dashboard_msg)
+
 
 def draw_keypoints(image, keypoints):
     '''
