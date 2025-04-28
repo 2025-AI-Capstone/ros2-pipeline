@@ -13,7 +13,7 @@ class VideoPublisher(Node):
         super().__init__('video_publisher')
         
         # Declare parameters
-        self.declare_parameter('video_path', './src/video_publisher/video/MOT17-08-SDP-raw.webm')
+        self.declare_parameter('video_path', './src/video_publisher/video/MOT20-02-raw.webm')
         self.declare_parameter('loop', True)
         self.declare_parameter('fps', 30)
         

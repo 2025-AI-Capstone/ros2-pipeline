@@ -16,14 +16,14 @@ class Regenerator(Node):
     def __init__(self):
         super().__init__('regenerator_node')
     
-        image_sub = message_filters.Subscriber(self, Image, 'camera/frames')
+        image_sub = message_filters.Subscriber(self, Image, 'video_publisher/frames')
         bbox_sub = message_filters.Subscriber(self, CustomDetection2D, 'detector/bboxes')
         # keypoints_sub = message_filters.Subscriber(self, JointState, 'detector/keypoints')
         falldet_sub = message_filters.Subscriber(self, JointState, 'falldetector/falldets')
         tracked_sub = message_filters.Subscriber(self, CustomTrackedObjects, 'tracker/tracked_objects') 
         # data synchronization
         sync = message_filters.ApproximateTimeSynchronizer(
-            [image_sub, bbox_sub, falldet_sub, tracked_sub],
+            [image_sub, bbox_sub, falldet_sub],
             queue_size=10, slop=0.5
         )
         sync.registerCallback(self.synced_callback)
@@ -67,14 +67,13 @@ class Regenerator(Node):
             'image': image_base64,
             'bboxes': serialized_bbox,
             'keypoints': keypoints_data.tolist(),
-            'falldetections': falldet_msg.position,
+            'falldetections': np.array(falldet_msg.position).tolist(),
             # 'tracked_objects': tracked_objs
         }
 
         dashboard_msg = String()
         dashboard_msg.data = json.dumps(dashboard_data)
         self.dashboard_pub.publish(dashboard_msg)
-
 
 def draw_keypoints(image, keypoints):
     '''
