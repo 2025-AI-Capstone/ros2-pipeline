@@ -1,9 +1,8 @@
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import String
+from std_msgs.msg import String, Empty
 import whisper
 import pyaudio
-import wave
 import numpy as np
 import threading
 import time
@@ -21,89 +20,87 @@ class STTNode(Node):
         # set logging
         self.setup_logging()
         
-        # load enviromental variables
+        # load environment variables
         load_dotenv()
         self.logger.info('Environment variables loaded')
         
-        # set publisher
+        # publisher for recognized text
         self.publisher = self.create_publisher(String, 'stt/speech_text', 10)
         
-        # load openai whisper model(base)
+        # subscription for trigger requests
+        self.trigger_sub = self.create_subscription(
+            Empty,
+            'stt/trigger',
+            self.trigger_callback,
+            10
+        )
+        
+        # load Whisper model
         start_time = time.time()
         self.model = whisper.load_model("base")
         load_time = time.time() - start_time
         self.logger.info(f'Whisper model loaded in {load_time:.2f} seconds')
         
+        # initialize Picovoice Porcupine for wake word detection
         access_key = os.getenv('PICOVOICE_ACCESS_KEY')
         if not access_key:
-            self.logger.error('PICOVOICE_ACCESS_KEY environment variable not set')
+            self.logger.error('PICOVOICE_ACCESS_KEY not set')
             raise RuntimeError('PICOVOICE_ACCESS_KEY not set')
-            
         try:
             self.porcupine = pvporcupine.create(
                 access_key=access_key,
                 keywords=['computer']
             )
-            self.logger.info(f'Porcupine initialized successfully with keyword "focus"')
-            self.logger.info(f'Porcupine sample rate: {self.porcupine.sample_rate} Hz')
+            self.logger.info('Porcupine initialized successfully')
         except Exception as e:
-            self.logger.error(f'Failed to initialize Porcupine: {str(e)}')
+            self.logger.error(f'Failed to initialize Porcupine: {e}')
             raise
         
-        # 오디오 설정
-        self.CHUNK = 512  # Porcupine Chunk
-        self.FORMAT = pyaudio.paInt16  # Porcupine Format
+        # audio configuration
+        self.CHUNK = 512
+        self.FORMAT = pyaudio.paInt16
         self.CHANNELS = 1
-        self.RATE = self.porcupine.sample_rate  # Porcupine sample rate
+        self.RATE = self.porcupine.sample_rate
         self.RECORD_SECONDS = 7
-        self.logger.info(f'Audio configuration: CHUNK={self.CHUNK}, FORMAT=Int16, CHANNELS={self.CHANNELS}, '
-                         f'RATE={self.RATE}, RECORD_SECONDS={self.RECORD_SECONDS}')
         
-        self.is_listening = False
+        # state counters
         self.wake_word_count = 0
-        self.transcription_count = 0
         self.publish_count = 0
-        
-        # Initialize PyAudio
-        self.logger.info('Initializing PyAudio')
+
+        # initialize PyAudio and start processing thread
         self.audio = pyaudio.PyAudio()
-                
-        # start recording thread
-        self.logger.info('Starting audio processing thread')
         self.recording_thread = threading.Thread(target=self.process_audio)
         self.recording_thread.daemon = True
         self.recording_thread.start()
         
-        self.logger.info('STT Node initialization complete, waiting for wake word')
-    
-    def setup_logging(self):
+        self.logger.info('STT Node initialized and waiting for events')
 
+    def setup_logging(self):
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         log_filename = f'stt_node_{timestamp}.log'
-        
-        # 로거 설정
         self.logger = logging.getLogger('stt_node')
         self.logger.setLevel(logging.DEBUG)
-        
-        # 파일 핸들러
         file_handler = logging.FileHandler(log_filename)
         file_handler.setLevel(logging.DEBUG)
-        
-        # 콘솔 핸들러
         console_handler = logging.StreamHandler()
         console_handler.setLevel(logging.INFO)
-        
-        # 포맷 설정
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         file_handler.setFormatter(formatter)
         console_handler.setFormatter(formatter)
-        
-        # 핸들러 추가
         self.logger.addHandler(file_handler)
         self.logger.addHandler(console_handler)
-        
-        self.logger.info(f'Logging initialized, writing to {log_filename}')
-        
+        self.logger.info(f'Logging initialized to {log_filename}')
+
+    def trigger_callback(self, msg: Empty):
+        self.logger.info('STT trigger received')
+        transcription = self.listen_and_transcribe(self.RECORD_SECONDS)
+        if transcription:
+            out = String()
+            out.data = transcription
+            self.publisher.publish(out)
+            self.publish_count += 1
+            self.logger.info(f'Published triggered STT #{self.publish_count}: {transcription}')
+
     def process_audio(self):
         try:
             stream = self.audio.open(
@@ -113,39 +110,24 @@ class STTNode(Node):
                 input=True,
                 frames_per_buffer=self.CHUNK
             )
-            self.logger.info('Audio stream opened successfully')
-
+            self.logger.info('Audio stream opened')
             while rclpy.ok():
-                try:
-                    pcm = stream.read(self.CHUNK, exception_on_overflow=False)
-                    pcm_unpacked = struct.unpack_from("h" * self.CHUNK, pcm)
-                    keyword_index = self.porcupine.process(pcm_unpacked)
-
-                    if keyword_index >= 0:
-                        self.wake_word_count += 1
-                        self.logger.info(f'Wake word detected! (#{self.wake_word_count}) 시작합니다.')
-
-                        # 리팩토링된 함수로 음성 녹음 및 Whisper 처리
-                        transcription = self.listen_and_transcribe(self.RECORD_SECONDS)
-
-                        if transcription:
-                            msg = String()
-                            msg.data = transcription
-                            self.publisher.publish(msg)
-                            self.publish_count += 1
-
-                            self.logger.info(f'Published #{self.publish_count}: {transcription}')
-                        else:
-                            self.logger.warning("텍스트 인식 실패: 결과 없음")
-    
-                except Exception as e:
-                    self.logger.error(f'Error in audio loop: {str(e)}', exc_info=True)
-
+                pcm = stream.read(self.CHUNK, exception_on_overflow=False)
+                pcm_unpacked = struct.unpack_from("h" * self.CHUNK, pcm)
+                keyword_index = self.porcupine.process(pcm_unpacked)
+                if keyword_index >= 0:
+                    self.wake_word_count += 1
+                    self.logger.info(f'Wake word detected #{self.wake_word_count}')
+                    transcription = self.listen_and_transcribe(self.RECORD_SECONDS)
+                    if transcription:
+                        msg = String()
+                        msg.data = transcription
+                        self.publisher.publish(msg)
+                        self.publish_count += 1
+                        self.logger.info(f'Published wake STT #{self.publish_count}: {transcription}')
                 time.sleep(0.01)
-
         except Exception as e:
-            self.logger.critical(f'Fatal error in audio setup: {str(e)}', exc_info=True)
-
+            self.logger.critical(f'Audio processing error: {e}', exc_info=True)
         finally:
             if 'stream' in locals():
                 stream.stop_stream()
@@ -153,9 +135,7 @@ class STTNode(Node):
                 self.logger.info('Audio stream closed')
 
     def listen_and_transcribe(self, record_seconds: int) -> str:
-
         try:
-            self.logger.info(f"{record_seconds}초 동안 녹음 시작")
             stream = self.audio.open(
                 format=self.FORMAT,
                 channels=self.CHANNELS,
@@ -163,52 +143,42 @@ class STTNode(Node):
                 input=True,
                 frames_per_buffer=self.CHUNK
             )
-
             frames = []
             total_chunks = int(self.RATE / self.CHUNK * record_seconds)
-            for chunk_idx in range(total_chunks):
+            for _ in range(total_chunks):
                 data = stream.read(self.CHUNK, exception_on_overflow=False)
                 frames.append(data)
-
             stream.stop_stream()
             stream.close()
-            self.logger.info("녹음 종료. Whisper로 처리 시작...")
-
-            # numpy array로 변환
-            audio_data = np.frombuffer(b''.join(frames), dtype=np.int16)
-            audio_data = audio_data.astype(np.float32) / 32768.0
-
-            # Whisper 인식
+            audio_data = np.frombuffer(b''.join(frames), dtype=np.int16).astype(np.float32) / 32768.0
             result = self.model.transcribe(audio_data)
-            text = result["text"].strip()
-
-            self.logger.info(f"인식 결과: {text}")
+            text = result.get('text', '').strip()
+            self.logger.info(f'Transcription result: {text}')
             return text
-
         except Exception as e:
-            self.logger.error(f"[listen_and_transcribe] 오류 발생: {str(e)}", exc_info=True)
+            self.logger.error(f'Transcription error: {e}', exc_info=True)
             return ""
 
     def __del__(self):
         self.logger.info('STT Node shutting down')
         if hasattr(self, 'porcupine'):
             self.porcupine.delete()
-            self.logger.info('Porcupine instance deleted')
         if hasattr(self, 'audio'):
             self.audio.terminate()
-            self.logger.info('PyAudio terminated')
-        self.logger.info('STT Node shutdown complete')
+        self.logger.info('Cleanup complete')
+
 
 def main(args=None):
     rclpy.init(args=args)
+    node = STTNode()
     try:
-        node = STTNode()
         rclpy.spin(node)
-        node.destroy_node()
-    except Exception as e:
-        logging.critical(f'Unhandled exception in main: {str(e)}', exc_info=True)
+    except KeyboardInterrupt:
+        pass
     finally:
+        node.destroy_node()
         rclpy.shutdown()
+
 
 if __name__ == '__main__':
     main()
