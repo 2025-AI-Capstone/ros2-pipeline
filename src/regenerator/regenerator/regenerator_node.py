@@ -4,7 +4,7 @@ from cv_bridge import CvBridge
 import cv2
 import os
 from pathlib import Path
-from custom_msgs import CustomDetection2D, CustomTrackedObjects
+from custom_msgs.msg import CustomDetection2D, CustomTrackedObjects
 from sensor_msgs.msg import Image, JointState
 from std_msgs.msg import String
 import message_filters
@@ -32,7 +32,7 @@ class Regenerator(Node):
         # JSON publisher for dashboard
         self.dashboard_pub = self.create_publisher(String, 'dashboard/data', 10)
     
-    def synced_callback(self, image_msg, bbox_msg, falldet_msg, tracked_msg):
+    def synced_callback(self, image_msg, bbox_msg, falldet_msg):
         # Convert ROS image to OpenCV
         cv_image = self.cv_bridge.imgmsg_to_cv2(image_msg, desired_encoding='bgr8')
 
@@ -51,6 +51,7 @@ class Regenerator(Node):
         _, buffer = cv2.imencode('.jpg', display_image)
         image_base64 = base64.b64encode(buffer).decode('utf-8')
 
+        '''
         # Tracked objects
         tracked_objs = [
             {'id': obj.id, 'bbox': {
@@ -60,14 +61,14 @@ class Regenerator(Node):
                 'height': obj.bbox.height
             }} for obj in tracked_msg.tracked_objects
         ]
-
+        '''
         # Dashboard json
         dashboard_data = {
             'image': image_base64,
             'bboxes': serialized_bbox,
             'keypoints': keypoints_data.tolist(),
             'falldetections': falldet_msg.position,
-            'tracked_objects': tracked_objs
+            # 'tracked_objects': tracked_objs
         }
 
         dashboard_msg = String()
