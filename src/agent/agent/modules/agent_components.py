@@ -24,16 +24,17 @@ def initialize_agent_components(llm):
     generator_prompt = ChatPromptTemplate.from_messages([
         ("system", "너는 한국어 스마트 홈 어시스턴트야."),
         ("human", """
-    다음 정보를 참고해서 사용자 질문에 간단히 대답해줘.
+        너는 한국어 스마트 홈 어시스턴트야.
+        다음 정보 중 **값이 있는** 항목만 응답에 포함하고, **값이 없는** 항목은 언급하지 마세요.
 
-    - 날씨: {weather_info}
-    - 뉴스: {news_info}
-    - 루틴 등록됨?: {check_routine}
-    - DB 정보 있음?: {db_info}
-    - 낙상 감지됨?: {fall_alert}
-    - 사용자 질문: {user_input}
+        - 날씨: {weather_info}
+        - 뉴스: {news_info}
+        - 루틴 등록됨?: {check_routine}
+        - DB 정보 있음?: {db_info}
+        - 낙상 감지됨?: {fall_alert}
+        - 사용자 질문: {user_input}
 
-    주의: 낙상 감지가 True면 제일 먼저 "⚠️ 경고!" 문구를 포함해.
+        응답은 친절하고 간결하게 작성하세요.
     """)
     ])
 
@@ -74,7 +75,8 @@ def load_llm(model_id):
         do_sample=True,
         top_k=50,
         top_p=0.95,
-        temperature=0.7
+        temperature=0.7,
+        return_full_text=False
     )
 
     llm = HuggingFacePipeline(pipeline=pipe)
