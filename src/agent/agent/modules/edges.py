@@ -1,4 +1,4 @@
-from AgentState import AgentState
+from agent.modules.AgentState import AgentState
 from typing import Dict
 
 def task_selector(state: AgentState) -> Dict:

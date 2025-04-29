@@ -3,7 +3,7 @@ from rclpy.node import Node
 from std_msgs.msg import String, Empty, Bool
 
 from agent.modules.workflow import run_workflow
-from agent.modules.agent_components import initialize_agent_components
+from agent.modules.agent_components import load_llm, initialize_agent_components
 
 class AgentNode(Node):
     def __init__(self):
@@ -11,8 +11,8 @@ class AgentNode(Node):
 
         # initialize LangGraph LLM + components
         model_id = "Qwen/Qwen2.5-3B-Instruct"
-        self.agent_components = initialize_agent_components(model_id)
-        self.llm = self.agent_components["llm"]
+        self.llm = load_llm(model_id)
+        self.agent_components = initialize_agent_components(self.llm)
         self.fall_alert = False
 
         # STT text subscription
