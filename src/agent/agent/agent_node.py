@@ -2,8 +2,8 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String, Empty, Bool
 
-from workflow import run_workflow
-from agent_components import initialize_agent_components
+from agent.modules.workflow import run_workflow
+from agent.modules.agent_components import initialize_agent_components
 
 class AgentNode(Node):
     def __init__(self):
