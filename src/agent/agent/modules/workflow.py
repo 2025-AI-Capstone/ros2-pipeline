@@ -1,11 +1,11 @@
 from typing import Dict, Any
 from langgraph.graph import StateGraph, END
-from agent.modules.AgentState import AgentState
-from agent.modules.nodes import (
+from AgentState import AgentState
+from nodes import (
     generator, get_weather, get_news, get_db,
      send_emergency_report
 )
-from agent.modules.edges import await_voice_response,task_selector,check_routine_edge
+from edges import await_voice_response,task_selector,check_routine_edge
 
 def run_workflow(input: str, llm: Any, fall_alert: bool = False, agent_components: Dict[str, Any] = None) -> str:
     
@@ -38,12 +38,12 @@ def run_workflow(input: str, llm: Any, fall_alert: bool = False, agent_component
 
     workflow.add_edge("get_weather", "generator")
     workflow.add_edge("get_news", "generator")
-    workflow.add_edge("check_routine_edge", "generator")
-    workflow.add_edge("get_db", "generator")
+    # workflow.add_edge("check_routine_edge", "generator")
+    # workflow.add_edge("get_db", "generator")
 
     workflow.add_conditional_edges(
         "check_routine_edge",
-        lambda state: state["check_routine"],
+        lambda state: "reject" if state["check_routine"]=="reject" else "call_db",
         {
             "call_db": "get_db",
             "reject": "generator"

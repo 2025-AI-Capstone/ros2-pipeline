@@ -1,5 +1,5 @@
 from typing import Dict, Any
-from agent.modules.AgentState import AgentState
+from AgentState import AgentState
 from dotenv import load_dotenv
 import requests
 import json
@@ -41,29 +41,51 @@ def get_weather(state: AgentState) -> Dict[str, Any]:
         state["weather_info"] = f"날씨 API 오류: {e}"
         return state
 
-
 def get_news(state: AgentState) -> Dict[str, Any]:
-    load_dotenv()
-    client_id = os.getenv("CLIENT_ID")
-    client_secret = os.getenv("CLIENT_SECRET")
+    try:
+        load_dotenv()
+        client_id = os.getenv("CLIENT_ID")
+        client_secret = os.getenv("CLIENT_SECRET")
 
-    agent_response = state.get("agent_response", "")
-    encText = urllib.parse.quote(agent_response)
+        if not client_id or not client_secret:
+            state["news_info"] = "Error: Missing API credentials"
+            return state
 
-    url = 'https://openapi.naver.com/v1/search/news?query=' + encText
-    request = urllib.request.Request(url)
-    request.add_header("X-Naver-Client-id", client_id)
-    request.add_header("X-Naver-Client-Secret", client_secret)
-    response = urllib.request.urlopen(request)
-    rescode = response.getcode()
+        user_input = state.get("input", "")
+        if not user_input:
+            state["news_info"] = "Error: Missing search query"
+            return state
 
-    if rescode == 200:
-        response_body = response.read()
-        search_response = response_body.decode('utf-8')
-        state["news_info"] = search_response
-    else:
-        state["news_info"] = ""
+        encText = urllib.parse.quote(user_input)
+        url = f"https://openapi.naver.com/v1/search/news?query={encText}"
+
+        request = urllib.request.Request(url)
+        request.add_header("X-Naver-Client-Id", client_id)
+        request.add_header("X-Naver-Client-Secret", client_secret)
+        request.add_header("User-Agent", "Mozilla/5.0")
+
+        response = urllib.request.urlopen(request)
+        rescode = response.getcode()
+
+        if rescode == 200:
+            import re, json
+            from html import unescape
+
+            def clean_html(raw):
+                return unescape(re.sub('<.*?>', '', raw))
+
+            response_body = response.read().decode('utf-8')
+            data = json.loads(response_body)
+            titles = [clean_html(item["title"]) for item in data.get("items", [])[:3]]
+            summary = "\n".join(titles)
+            state["news_info"] = summary
+        else:
+            state["news_info"] = f"Error: API returned code {rescode}"
+    except Exception as e:
+        state["news_info"] = f"Error: {str(e)}"
+
     return state
+
 
 
 def get_db(state: AgentState) -> Dict[str, Any]:

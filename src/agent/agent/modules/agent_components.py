@@ -2,41 +2,64 @@ from langchain.prompts import PromptTemplate, ChatPromptTemplate
 import datetime
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 from langchain_community.llms import HuggingFacePipeline
+
 def initialize_agent_components(llm):
 
     # 루틴 등록 여부 확인
     check_routine_prompt = PromptTemplate.from_template("""
-    입력이 루틴 등록 요청이면 아래 형식의 JSON으로 추출하고,
-    그 외에는 "reject"만 출력하세요.
+시스템: 당신은 루틴 등록 요청을 감지하는 분석기입니다. 루틴 등록 요청이면 정확한 JSON 형식으로 변환하고, 아니면 "reject"만 출력하세요. 입력의 내용을 절대 포함하지 마세요.
 
-    예시 형식:
-    {{
-    "title": "약먹을시간",
-    "alarm_time": "09:00:00",
-    "repeat_type": "daily",
-    "user_id": 1
-    }}
+{
+  "title": "약먹기",
+  "alarm_time": "09:00:00",
+  "repeat_type": "daily",
+  "user_id": 1
+}
+
+입력: {user_input}
+""")
+
+    task_selector_prompt = PromptTemplate.from_template("""
+    당신은 사용자의 요청을 분류하는 역할입니다. 요청을 읽고 다음 중 하나의 작업 유형만 정확하게 출력하십시오. 
+    다른 설명, 문장, 마침표 등은 포함하지 마십시오.
+
+    작업 유형:
+    - call_weather
+    - call_news
+    - call_db
+    - normal
+
+    출력 예시:
+    call_weather
+    오답: call_weather입니다 / call_weather. / 이 요청은 call_weather입니다
 
     입력: {user_input}
     """)
 
     # 홈 어시스턴트 응답 생성
     generator_prompt = ChatPromptTemplate.from_messages([
-        ("system", "너는 한국어 스마트 홈 어시스턴트야."),
-        ("human", """
-        너는 한국어 스마트 홈 어시스턴트야.
-        다음 정보 중 **값이 있는** 항목만 응답에 포함하고, **값이 없는** 항목은 언급하지 마세요.
-
-        - 날씨: {weather_info}
-        - 뉴스: {news_info}
-        - 루틴 등록됨?: {check_routine}
-        - DB 정보 있음?: {db_info}
-        - 낙상 감지됨?: {fall_alert}
-        - 사용자 질문: {user_input}
-
-        응답은 친절하고 간결하게 작성하세요.
+    ("system", """
+    당신은 한국어 스마트 홈 어시스턴트입니다. 다음 규칙을 엄격히 따르세요:
+    1. 제공된 정보 중 값이 있는 항목만 언급하세요
+    2. 값이 비어있거나 없는 항목은 절대 언급하지 마세요
+    3. 응답은 정보 전달에만 집중하고 불필요한 설명이나 추가 문구를 포함하지 마세요
+    4. 정보를 사실적으로만 전달하고 추가적인 제안이나 질문을 하지 마세요
+    5. 뉴스 정보의 경우, 기사 제목의 내용만 간단히 취합해 정리하세요
+    """),
+    ("human", "{user_input}"),
+    ("system", """
+    현재 정보:
+    날씨: {weather_info}
+    뉴스: {news_info}
+    루틴: {check_routine}
+    DB: {db_info}
+    낙상알림: {fall_alert}
+    
+    위 정보 중 값이 있는 항목만 사용해 응답하세요. 
+    정보를 있는 그대로만 전달하고, 추가 질문이나 제안, 인사말, 마무리 문구를 붙이지 마세요.
+    응답은 필요한 정보만 포함하고 다른 내용은 제외하세요.
     """)
-    ])
+])
 
     # 낙상 후 음성 응답 평가
     check_emergency_prompt = PromptTemplate.from_template("""
@@ -50,35 +73,17 @@ def initialize_agent_components(llm):
     - "no response"
     """)
 
-    check_routine_chain = check_routine_prompt | llm.bind(temperature=0.4)
+    check_routine_chain = check_routine_prompt | llm.bind(temperature=0.0)
     generator_chain = generator_prompt | llm.bind(temperature=0.3)
     check_emergency_chain = check_emergency_prompt | llm.bind(temperature=0.2)
+    task_selector_chain = task_selector_prompt | llm.bind(temperature=0.0)
+
     
     return {
         "check_routine_chain":check_routine_chain,
         "generator_chain":generator_chain,
-        "check_emergency_chain":check_emergency_chain
+        "check_emergency_chain":check_emergency_chain,
+        "task_selector_chain":task_selector_chain
     }
 
-
-
-def load_llm(model_id):
-
-    tokenizer = AutoTokenizer.from_pretrained(model_id)
-    model = AutoModelForCausalLM.from_pretrained(model_id)
-
-    pipe = pipeline(
-        "text-generation",
-        model=model,
-        tokenizer=tokenizer,
-        max_new_tokens=60,
-        do_sample=True,
-        top_k=50,
-        top_p=0.95,
-        temperature=0.7,
-        return_full_text=False
-    )
-
-    llm = HuggingFacePipeline(pipeline=pipe)
-    return llm
 

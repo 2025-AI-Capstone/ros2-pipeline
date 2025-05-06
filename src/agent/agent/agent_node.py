@@ -4,14 +4,18 @@ from std_msgs.msg import String, Empty, Bool
 
 from agent.modules.workflow import run_workflow
 from agent.modules.agent_components import load_llm, initialize_agent_components
+from langchain.chat_models import ChatOpenAI
 
 class AgentNode(Node):
     def __init__(self):
         super().__init__('agent_node')
 
         # initialize LangGraph LLM + components
-        model_id = "Qwen/Qwen2.5-3B-Instruct"
-        self.llm = load_llm(model_id)
+        self.llm = llm = ChatOpenAI(
+            temperature=0.7,
+            model_name="gpt-3.5-turbo",
+            openai_api_key=os.getenv("OPENAI_API_KEY")
+            )
         self.agent_components = initialize_agent_components(self.llm)
         self.fall_alert = False
 

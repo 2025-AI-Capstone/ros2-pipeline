@@ -1,19 +1,18 @@
-from agent.modules.AgentState import AgentState
+from AgentState import AgentState
 from typing import Dict
 
 def task_selector(state: AgentState) -> Dict:
-    user_input = state["input"].strip().lower()
+    chain = state["agent_components"]["task_selector_chain"]
+    response = chain.invoke({"user_input": state["input"]})
+    print(response.content)
+    task_type = response.content.strip()  
+    if task_type not in ["call_weather", "call_news", "call_db", "normal"]:
+        task_type = "normal"             
 
-    if user_input in ["weather", "날씨", "기상", "온도", "기온", "예보"]:
-        state["task_type"] = "call_weather"
-    elif user_input in ["news", "뉴스", "기사", "소식", "정보"]:
-        state["task_type"] = "call_news"
-    elif user_input in ['저장', "기억해", "일정 추가", "알람 설정", "알람", "일정", "기억"]:
-        state["task_type"] = "call_db"
-    else:
-        state["task_type"] = "normal"
-
+    print("task_type:", task_type)
+    state["task_type"] = task_type
     return state
+
 
 def check_routine_edge(state: AgentState) -> Dict:
     check_routine_chain = state["agent_components"].get("check_routine_chain")
@@ -21,7 +20,8 @@ def check_routine_edge(state: AgentState) -> Dict:
         raise ValueError("check_routine_chain not found in agent_components")
 
     response = check_routine_chain.invoke({"user_input": state["input"]})
-    state["check_routine"] = response.content
+    state["check_routine"] = response
+    print(response)
     return state
 
 def await_voice_response(state: AgentState) -> Dict:
