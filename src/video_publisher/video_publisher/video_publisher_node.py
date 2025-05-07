@@ -2,11 +2,13 @@
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image
+from std_msgs.msg import String
 from cv_bridge import CvBridge
 import cv2
 import os
 import time
 from std_srvs.srv import SetBool
+import base64
 
 class VideoPublisher(Node):
     def __init__(self):
@@ -24,7 +26,7 @@ class VideoPublisher(Node):
         
         # Create publisher
         self.publisher = self.create_publisher(Image, 'video_publisher/frames', 10)
-        
+        self.web_publisher = self.create_publisher(String, 'video_publisher/stream', 10)
         # Create CheckVideo service
         self.srv = self.create_service(SetBool, 'video_publisher/check_video', self.check_video_callback)
         
@@ -77,12 +79,17 @@ class VideoPublisher(Node):
         if ret:
             # OpenCV 이미지를 ROS 메시지로 변환
             msg = self.bridge.cv2_to_imgmsg(frame, encoding='bgr8')
-            
+            msg = self.bridge.cv2_to_imgmsg(frame, encoding='bgr8')
+            _, buffer = cv2.imencode('.jpeg', frame)
+            image_base64 = base64.b64encode(buffer).decode('utf-8')
+            base64_msg = String()
+            base64_msg.data = image_base64
             # 현재 프레임 번호 추가
             msg.header.stamp = self.get_clock().now().to_msg()
             
             # 프레임 발행
             self.publisher.publish(msg)
+            self.web_publisher.publish(base64_msg)
             self.frame_count += 1
             
         else:
