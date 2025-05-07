@@ -87,9 +87,8 @@ def get_news(state: AgentState) -> Dict[str, Any]:
     return state
 
 
-
 def get_db(state: AgentState) -> Dict[str, Any]:
-    backend_url = "http://localhost:8080/routines"
+    backend_url = "http://localhost:8000/routines" 
     routine_payload = state.get("routine_data")
 
     if not routine_payload:
@@ -99,10 +98,13 @@ def get_db(state: AgentState) -> Dict[str, Any]:
     try:
         response = requests.post(backend_url, json=routine_payload, timeout=3)
         response.raise_for_status()
+        print("루틴 등록 성공:", response.json())
         state["db_info"] = True
     except requests.exceptions.RequestException as e:
+        print("루틴 등록 실패:", str(e))
         state["db_info"] = False
     return state
+
 
 
 def generator(state: AgentState) -> Dict[str, Any]:

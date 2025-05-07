@@ -7,17 +7,21 @@ def initialize_agent_components(llm):
 
     # 루틴 등록 여부 확인
     check_routine_prompt = PromptTemplate.from_template("""
-시스템: 당신은 루틴 등록 요청을 감지하는 분석기입니다. 사용자가 일정이나 루틴을 등록하기 원하면 아래와 같은 정확한 JSON 형식으로 변환하고, 아니면 "reject"만 출력하세요. 변환한 json 데이터만 반환하세요.
+    시스템: 당신은 사용자의 루틴 등록 요청을 감지하는 분석기입니다.
+    만약 사용자의 입력이 루틴 등록 요청이면 아래의 JSON 형식으로 정확히 변환하세요.
+    그 외의 경우에는 단순히 "reject"만 출력하세요.
+    아래는 반환 예시입니다:
 
-{{
-  "title": "약먹기",
-  "alarm_time": "09:00:00",
-  "repeat_type": "daily",
-  "user_id": 1
-}}
+    {{
+    "user_id": 1,
+    "title": "복약 알림",
+    "description": "매일 아침 9시에 약 복용",
+    "alarm_time": "09:00:00",
+    "repeat_type": "daily"
+    }}
 
-입력: {user_input}
-""")
+    입력: {user_input}
+    """)
 
     task_selector_prompt = PromptTemplate.from_template("""
     당신은 사용자의 요청을 분류하는 역할입니다. 요청을 읽고 다음 중 하나의 작업 유형만 정확하게 출력하십시오. 
