@@ -3,20 +3,22 @@ from rclpy.node import Node
 from std_msgs.msg import String, Empty, Bool
 
 from agent.modules.workflow import run_workflow
-from agent.modules.agent_components import load_llm, initialize_agent_components
+from agent.modules.agent_components import initialize_agent_components
 from langchain.chat_models import ChatOpenAI
 import os
+from dotenv import load_dotenv
 
 class AgentNode(Node):
     def __init__(self):
         super().__init__('agent_node')
 
+        load_dotenv()
         # initialize LangGraph LLM + components
-        self.llm = llm = ChatOpenAI(
+        self.llm = ChatOpenAI(
             temperature=0.7,
             model_name="gpt-3.5-turbo",
             openai_api_key=os.getenv("OPENAI_API_KEY")
-            )
+        )
         self.agent_components = initialize_agent_components(self.llm)
         self.fall_alert = False
 
@@ -45,9 +47,9 @@ class AgentNode(Node):
 
         # publish result
         out = String()
-        out.data = answer
+        out.data = answer.content.strip()
         self.response_publisher.publish(out)
-        self.get_logger().info(f"Published answer: {answer}")
+        self.get_logger().info(f"Published answer: {answer.content}")
 
     def fall_alert_callback(self, msg: Bool):
         if msg.data:

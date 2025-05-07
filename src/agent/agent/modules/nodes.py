@@ -1,5 +1,5 @@
 from typing import Dict, Any
-from AgentState import AgentState
+from agent.modules.AgentState import AgentState
 from dotenv import load_dotenv
 import requests
 import json
