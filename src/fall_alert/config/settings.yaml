@@ -1,0 +1,4 @@
+fall_alert_node:
+  ros__parameters:
+    fall_alert_id: 0
+    frame_rate: 30
