@@ -5,6 +5,7 @@ from std_msgs.msg import String, Empty, Bool
 from agent.modules.workflow import run_workflow
 from agent.modules.agent_components import load_llm, initialize_agent_components
 from langchain.chat_models import ChatOpenAI
+import os
 
 class AgentNode(Node):
     def __init__(self):
@@ -22,7 +23,7 @@ class AgentNode(Node):
         # STT text subscription
         self.create_subscription(String, 'stt/speech_text', self.text_callback, 10)
         # fall detection subscription
-        self.create_subscription(Bool, 'assistant/fall_alert', self.fall_alert_callback, 10)
+        self.create_subscription(Bool, 'fall_alert/warning', self.fall_alert_callback, 10)
         # publish LLM answer
         self.response_publisher = self.create_publisher(String, 'agent/response', 10)
         # publish STT trigger

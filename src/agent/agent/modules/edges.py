@@ -6,7 +6,7 @@ def task_selector(state: AgentState) -> Dict:
     response = chain.invoke({"user_input": state["input"]})
     print(response.content)
     task_type = response.content.strip()  
-    if task_type not in ["call_weather", "call_news", "call_db", "normal"]:
+    if task_type not in ["call_weather", "call_news", "call_routine", "normal"]:
         task_type = "normal"             
 
     print("task_type:", task_type)
@@ -20,8 +20,8 @@ def check_routine_edge(state: AgentState) -> Dict:
         raise ValueError("check_routine_chain not found in agent_components")
 
     response = check_routine_chain.invoke({"user_input": state["input"]})
-    state["check_routine"] = response
-    print(response)
+    state["check_routine"] = response.content.strip()
+    print(response.content.strip())
     return state
 
 def await_voice_response(state: AgentState) -> Dict:

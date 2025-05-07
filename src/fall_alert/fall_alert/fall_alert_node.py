@@ -19,7 +19,7 @@ class FallAlertNode(Node):
         )
 
         # 발행: 낙상 경고 메시지
-        self.alert_publisher = self.create_publisher(String, 'fall_alert', 10)
+        self.alert_publisher = self.create_publisher(String, 'fall_alert/warning', 10)
 
         # 최근 5초간의 FALL 상태 기록 (timestamp, is_fall)
         self.fall_history = deque()

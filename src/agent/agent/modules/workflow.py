@@ -31,7 +31,7 @@ def run_workflow(input: str, llm: Any, fall_alert: bool = False, agent_component
         {
             "call_weather": "get_weather",
             "call_news": "get_news",
-            "call_db": "check_routine_edge",
+            "call_routine": "check_routine_edge",
             "normal": "generator"
         }
     )
