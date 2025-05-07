@@ -2,29 +2,35 @@
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image
+from std_msgs.msg import String
 from cv_bridge import CvBridge
 import cv2
 import os
 import time
 from std_srvs.srv import SetBool
+import base64
 
 class VideoPublisher(Node):
     def __init__(self):
         super().__init__('video_publisher')
         
         # Declare parameters
-        self.declare_parameter('video_path', './src/video_publisher/video/MOT20-02-raw.webm')
+        self.declare_parameter('video_path', './src/video_publisher/video/MOT17-08-SDP-raw.webm')
         self.declare_parameter('loop', True)
         self.declare_parameter('fps', 30)
+        self.declare_parameter('width', 640)
+        self.declare_parameter('height', 480)
         
         # Get parameters
         self.video_path = self.get_parameter('video_path').value
         self.loop = self.get_parameter('loop').value
         self.fps = self.get_parameter('fps').value
+        self.width = self.get_parameter('width').value
+        self.height = self.get_parameter('height').value
         
         # Create publisher
         self.publisher = self.create_publisher(Image, 'video_publisher/frames', 10)
-        
+        self.web_publisher = self.create_publisher(String, 'video_publisher/stream', 10)
         # Create CheckVideo service
         self.srv = self.create_service(SetBool, 'video_publisher/check_video', self.check_video_callback)
         
@@ -40,6 +46,7 @@ class VideoPublisher(Node):
         
         self.get_logger().info(f'Video Publisher started with file: {self.video_path}')
         self.get_logger().info(f'FPS: {self.fps}, Loop: {self.loop}')
+        self.get_logger().info(f'Resolution: {self.width}x{self.height}')
 
         self.create_timer(10, self.printlog)
         
@@ -62,8 +69,12 @@ class VideoPublisher(Node):
         # 비디오 정보 출력
         actual_fps = self.cap.get(cv2.CAP_PROP_FPS)
         frame_count = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        original_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        original_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         self.get_logger().info(f'Video FPS: {actual_fps}')
         self.get_logger().info(f'Total frames: {frame_count}')
+        self.get_logger().info(f'Original resolution: {original_width}x{original_height}')
+        self.get_logger().info(f'Resizing to: {self.width}x{self.height}')
         
         return True
 
@@ -75,14 +86,24 @@ class VideoPublisher(Node):
         ret, frame = self.cap.read()
         
         if ret:
+            # Resize frame to desired resolution
+            resized_frame = cv2.resize(frame, (self.width, self.height))
+            
             # OpenCV 이미지를 ROS 메시지로 변환
-            msg = self.bridge.cv2_to_imgmsg(frame, encoding='bgr8')
+            msg = self.bridge.cv2_to_imgmsg(resized_frame, encoding='bgr8')
+            
+            # Encode for web streaming
+            _, buffer = cv2.imencode('.jpeg', resized_frame)
+            image_base64 = base64.b64encode(buffer).decode('utf-8')
+            base64_msg = String()
+            base64_msg.data = image_base64
             
             # 현재 프레임 번호 추가
             msg.header.stamp = self.get_clock().now().to_msg()
             
             # 프레임 발행
             self.publisher.publish(msg)
+            self.web_publisher.publish(base64_msg)
             self.frame_count += 1
             
         else:

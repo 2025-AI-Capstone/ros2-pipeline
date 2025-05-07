@@ -78,12 +78,12 @@ class DetectorNode(Node):
             
             # Bounding Box 메시지 초기화
             detection_msg = CustomDetection2D()
-            detection_msg.header.stamp = self.get_clock().now().to_msg()
+            detection_msg.header.stamp = msg.header.stamp
             detection_msg.header.frame_id = "camera_frame"
 
             # Keypoints 메시지 초기화
             keypoints_msg = JointState()
-            keypoints_msg.header.stamp = detection_msg.header.stamp
+            keypoints_msg.header.stamp = msg.header.stamp
             keypoints_msg.header.frame_id = "camera_frame"
 
             bounding_boxes = []
@@ -91,14 +91,14 @@ class DetectorNode(Node):
             for result in results:
                 boxes = result.boxes
                 keypoints = result.keypoints
-                
+                detections = Float32MultiArray()
                 for box, kpts in zip(boxes, keypoints):
                     if box.cls == 0:  # 사람이 감지된 경우
                         x1, y1, x2, y2 = box.xyxy[0].tolist()
                         conf = float(box.conf[0])  # Confidence Score
 
                         # Bounding Box 메시지 구성
-                        detections = Float32MultiArray()
+                        
                         detections.data.extend([x1, y1, x2, y2, conf])
 
                         # Keypoints 데이터 구성

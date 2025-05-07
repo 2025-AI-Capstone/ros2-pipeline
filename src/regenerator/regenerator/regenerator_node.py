@@ -23,7 +23,7 @@ class Regenerator(Node):
         # data synchronization
         sync = message_filters.ApproximateTimeSynchronizer(
             [image_sub, bbox_sub, keypoints_sub],
-            queue_size=10, slop=0.5
+            queue_size=10, slop=0.2
         )
         sync.registerCallback(self.synced_callback)
         self.cv_bridge = CvBridge()
@@ -40,14 +40,12 @@ class Regenerator(Node):
         for i in range(0, len(bbox_msg.detections.data), 5):
             x1, y1, x2, y2, conf = bbox_msg.detections.data[i:i+5]
             serialized_bbox.append({'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2, 'conf': conf})
-            cv2.rectangle(cv_image, (int(x1), int(y1)), (int(x2), int(y2)), (255, 0, 0), 2)
 
         # Keypoints (17 x 3) for each person
         keypoints_data = np.array(keypoint_msg.position).reshape(-1, 17, 3)
-        display_image = draw_keypoints(cv_image, keypoints_data)
 
         # Encode image to base64
-        _, buffer = cv2.imencode('.jpg', display_image)
+        _, buffer = cv2.imencode('.jpg', cv_image)
         image_base64 = base64.b64encode(buffer).decode('utf-8')
 
         '''
