@@ -18,12 +18,11 @@ class Regenerator(Node):
     
         image_sub = message_filters.Subscriber(self, Image, 'video_publisher/frames')
         bbox_sub = message_filters.Subscriber(self, CustomDetection2D, 'detector/bboxes')
-        # keypoints_sub = message_filters.Subscriber(self, JointState, 'detector/keypoints')
-        falldet_sub = message_filters.Subscriber(self, JointState, 'falldetector/falldets')
-        tracked_sub = message_filters.Subscriber(self, CustomTrackedObjects, 'tracker/tracked_objects') 
+        keypoints_sub = message_filters.Subscriber(self, JointState, 'detector/keypoints')
+        # tracked_sub = message_filters.Subscriber(self, CustomTrackedObjects, 'tracker/tracked_objects') 
         # data synchronization
         sync = message_filters.ApproximateTimeSynchronizer(
-            [image_sub, bbox_sub, falldet_sub],
+            [image_sub, bbox_sub, keypoints_sub],
             queue_size=10, slop=0.5
         )
         sync.registerCallback(self.synced_callback)
@@ -32,7 +31,7 @@ class Regenerator(Node):
         # JSON publisher for dashboard
         self.dashboard_pub = self.create_publisher(String, 'dashboard/data', 10)
     
-    def synced_callback(self, image_msg, bbox_msg, falldet_msg):
+    def synced_callback(self, image_msg, bbox_msg, keypoint_msg):
         # Convert ROS image to OpenCV
         cv_image = self.cv_bridge.imgmsg_to_cv2(image_msg, desired_encoding='bgr8')
 
@@ -44,7 +43,7 @@ class Regenerator(Node):
             cv2.rectangle(cv_image, (int(x1), int(y1)), (int(x2), int(y2)), (255, 0, 0), 2)
 
         # Keypoints (17 x 3) for each person
-        keypoints_data = np.array(falldet_msg.position).reshape(-1, 17, 3)
+        keypoints_data = np.array(keypoint_msg.position).reshape(-1, 17, 3)
         display_image = draw_keypoints(cv_image, keypoints_data)
 
         # Encode image to base64
@@ -67,7 +66,7 @@ class Regenerator(Node):
             'image': image_base64,
             'bboxes': serialized_bbox,
             'keypoints': keypoints_data.tolist(),
-            'falldetections': np.array(falldet_msg.position).tolist(),
+            'falldetections': np.array(keypoint_msg.position).tolist(),
             # 'tracked_objects': tracked_objs
         }
 
