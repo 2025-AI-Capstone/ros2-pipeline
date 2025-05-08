@@ -30,7 +30,7 @@ class STTNode(Node):
         # subscription for trigger requests
         self.trigger_sub = self.create_subscription(
             Empty,
-            'stt/trigger',
+            'agent/trigger',
             self.trigger_callback,
             10
         )

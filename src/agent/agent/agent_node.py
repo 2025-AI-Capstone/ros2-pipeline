@@ -21,15 +21,15 @@ class AgentNode(Node):
         )
         self.agent_components = initialize_agent_components(self.llm)
         self.fall_alert = False
-
+        self.fall_response = "낙상이 감지되었습니다. 비상연락이 필요하신가요?"
         # STT text subscription
         self.create_subscription(String, 'stt/speech_text', self.text_callback, 10)
         # fall detection subscription
-        self.create_subscription(Bool, 'fall_alert/warning', self.fall_alert_callback, 10)
+        self.create_subscription(String, 'fall_alert/warning', self.fall_alert_callback, 10)
         # publish LLM answer
         self.response_publisher = self.create_publisher(String, 'agent/response', 10)
         # publish STT trigger
-        self.stt_trigger_pub = self.create_publisher(Empty, 'stt/trigger', 10)
+        self.stt_trigger_pub = self.create_publisher(Empty, 'agent/trigger', 10)
 
         self.get_logger().info("Agent Node ready")
 
@@ -39,7 +39,7 @@ class AgentNode(Node):
         answer = run_workflow(
             input=input_text,
             llm=self.llm,
-            fall_alert=self.fall_alert,
+            fall_alert= self.fall_alert,
             agent_components=self.agent_components
         )
         # reset fall flag
@@ -52,10 +52,11 @@ class AgentNode(Node):
         self.get_logger().info(f"Published answer: {answer.content}")
 
     def fall_alert_callback(self, msg: Bool):
-        if msg.data:
-            self.fall_alert = True
-            self.get_logger().info("Fall detected → triggering STT")
-            self.stt_trigger_pub.publish(Empty())
+
+        self.response_publisher.publish(self.fall_response)
+        self.fall_alert = True
+        self.get_logger().info("Fall detected → triggering STT")
+        self.stt_trigger_pub.publish(Empty())
 
 def main(args=None):
     rclpy.init(args=args)

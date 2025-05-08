@@ -108,9 +108,6 @@ def get_db(state: AgentState) -> Dict[str, Any]:
 
 
 def generator(state: AgentState) -> Dict[str, Any]:
-    if state.get("fall_alert"):
-        state["final_answer"] = "낙상이 감지되었습니다. 즉시 확인이 필요합니다. 괜찮으신가요?"
-        return state
 
     generator_chain = state["agent_components"]["generator_chain"]
     response = generator_chain.invoke({
