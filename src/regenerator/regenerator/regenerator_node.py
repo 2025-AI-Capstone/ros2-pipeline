@@ -16,7 +16,7 @@ class Regenerator(Node):
     def __init__(self):
         super().__init__('regenerator_node')
     
-        image_sub = message_filters.Subscriber(self, Image, 'video_publisher/frames')
+        image_sub = message_filters.Subscriber(self, Image, 'camera/image_raw')
         bbox_sub = message_filters.Subscriber(self, CustomDetection2D, 'detector/bboxes')
         keypoints_sub = message_filters.Subscriber(self, JointState, 'detector/keypoints')
         # tracked_sub = message_filters.Subscriber(self, CustomTrackedObjects, 'tracker/tracked_objects') 

@@ -38,7 +38,7 @@ class DetectorNode(Node):
         
         self.subscription = self.create_subscription(
             Image,
-            'video_publisher/frames',
+            'camera/image_raw',
             self.image_callback,
             10
         )
