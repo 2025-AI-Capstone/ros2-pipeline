@@ -45,23 +45,24 @@ class FallDetectorNode(Node):
             num_people = keypoints.shape[0]  
             keypoints_xy = keypoints[..., :2]
             non_zero_count = torch.count_nonzero(keypoints_xy).item()
-            if non_zero_count > 13:
+            if non_zero_count > 9:
                 keypoints_resized = keypoints_xy.reshape(num_people, -1)
                 keypoints_resized_clone = keypoints_resized.clone().detach()
                 prediction = self.model(keypoints_resized_clone)
 
+                result_msg = JointState()
+                result_msg.header.stamp = msg.header.stamp  
+                result_msg.header.frame_id = msg.header.frame_id 
 
-            result_msg = JointState()
-            result_msg.header.stamp = msg.header.stamp  
-            result_msg.header.frame_id = msg.header.frame_id 
+                result_msg.name = ["FALL" if pred == 1 else "NORMAL" for pred in prediction]
 
-            result_msg.name = ["FALL" if pred == 1 else "NORMAL" for pred in prediction]
+                result_msg.position = msg.position
 
-            result_msg.position = msg.position
-
-            # 결과 발행
-            self.publisher.publish(result_msg)
-            self.msg_count += 1
+                # 결과 발행
+                self.publisher.publish(result_msg)
+                self.msg_count += 1
+            else: 
+                self.get_logger().info("No valid keypoints detected.")
 
         except Exception as e:
             self.get_logger().error(f"Failed to process fall detection: {e}")

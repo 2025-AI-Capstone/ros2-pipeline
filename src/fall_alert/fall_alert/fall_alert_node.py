@@ -49,7 +49,7 @@ class FallAlertNode(Node):
         alert_msg = String()
         alert_msg.data = "Fall detected. Sending alert to server."
         self.alert_publisher.publish(alert_msg)
-        self.get_logger().warn(alert_msg.data)
+        self.get_logger().warn("published message: " ,alert_msg.data)
 
         data = {
             "user_id": self.user_id,
