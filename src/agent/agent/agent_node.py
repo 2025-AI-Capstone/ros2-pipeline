@@ -51,9 +51,11 @@ class AgentNode(Node):
         self.response_publisher.publish(out)
         self.get_logger().info(f"Published answer: {answer.content}")
 
-    def fall_alert_callback(self, msg: Bool):
-
-        self.response_publisher.publish(self.fall_response)
+    def fall_alert_callback(self, msg: String):
+        out = String()
+        out.data = self.fall_response
+        self.response_publisher.publish(out)
+        self.get_logger().info(f"Published fall alert response: {self.fall_response}")
         self.fall_alert = True
         self.get_logger().info("Fall detected → triggering STT")
         self.stt_trigger_pub.publish(Empty())

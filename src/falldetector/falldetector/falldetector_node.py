@@ -61,8 +61,7 @@ class FallDetectorNode(Node):
                 # 결과 발행
                 self.publisher.publish(result_msg)
                 self.msg_count += 1
-            else: 
-                self.get_logger().info("No valid keypoints detected.")
+
 
         except Exception as e:
             self.get_logger().error(f"Failed to process fall detection: {e}")
