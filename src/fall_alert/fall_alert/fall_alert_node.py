@@ -5,13 +5,14 @@ from std_msgs.msg import String
 from collections import deque
 import requests
 import time
+import json
 
 class FallAlertNode(Node):
     def __init__(self):
         super().__init__('fall_alert_node')
 
         self.subscription = self.create_subscription(
-            JointState,
+            String,
             'falldetector/falldets',
             self.fall_callback,
             10
@@ -25,25 +26,13 @@ class FallAlertNode(Node):
         self.last_alert_time = 0
         self.alert_cooldown = 10
 
-        self.user_id = 1  # 사용자 ID (필요 시 파라미터화 가능)
+        self.user_id = 1
 
-    def fall_callback(self, msg: JointState):
+    def fall_callback(self, msg: String):
+        data = json.loads(msg.data)
         now = time.time()
-        fall_detected = any(name == 'FALL' for name in msg.name)
-        self.fall_history.append((now, fall_detected))
-
-        while self.fall_history and self.fall_history[0][0] < now - self.fall_window_sec:
-            self.fall_history.popleft()
-
-        if len(self.fall_history) >= 3:
-            fall_count = sum(1 for t, is_fall in self.fall_history if is_fall)
-            ratio = fall_count / len(self.fall_history)
-            self.get_logger().info(f'FALL ratio: {ratio:.2f}')
-
-            if ratio >= self.threshold_ratio and (now - self.last_alert_time) > self.alert_cooldown:
-                confidence = round(ratio * 100, 1)
-                self.send_alert(confidence)
-                self.last_alert_time = now
+        confidence_score = data.get('confidence_score',[])
+        self.send_alert(confidence_score)
 
     def send_alert(self, confidence_score: float):
         alert_msg = String()
