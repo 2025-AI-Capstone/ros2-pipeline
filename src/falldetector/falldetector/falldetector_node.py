@@ -1,12 +1,12 @@
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import JointState
-from std_msgs.msg import Float32MultiArray
+from std_msgs.msg import Float32MultiArray, String
 from std_srvs.srv import SetBool
 
 from sklearn.preprocessing import MinMaxScaler
 from falldetector.temp import SimpleNN
-
+import json
 import torch
 import numpy as np
 import time
@@ -33,7 +33,7 @@ class FallDetectorNode(Node):
         )
 
         # 결과 발행
-        self.publisher = self.create_publisher(JointState, 'falldetector/falldets', 10)
+        self.publisher = self.create_publisher(String, 'falldetector/falldets', 10)
 
         # 서비스 생성
         self.srv = self.create_service(SetBool, 'falldetector/check_fall', self.check_fall_callback)
@@ -89,16 +89,19 @@ class FallDetectorNode(Node):
                 keypoints_resized = keypoints_xy.reshape(num_people, -1)
                 keypoints_resized_clone = keypoints_resized.clone().detach()
                 prediction = self.model(keypoints_resized_clone)
-
-                result_msg = JointState()
-                result_msg.header.stamp = msg.header.stamp
-                result_msg.header.frame_id = msg.header.frame_id
-
-                result_msg.name = ["FALL" if pred == 1 else "NORMAL" for pred in prediction]
-                result_msg.position = msg.position
-
-                self.publisher.publish(result_msg)
-                self.msg_count += 1
+                confidence_score = prediction.squeeze().tolist()
+                if confidence_score > 0.5 :
+                    result_msg = String()
+                    result_msg.header.stamp = msg.header.stamp
+                    result_msg.header.frame_id = msg.header.frame_id
+                    result = {
+                        "timestamp": msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9,
+                        "frame_id": msg.header.frame_id,
+                        "confidence_score": confidence_score,
+                    }
+                    result_msg.data = json.dumps(result)
+                    self.publisher.publish(result_msg)
+                    self.msg_count += 1
 
                 self.bbox_trigger = False  # 트리거 초기화
             else:
