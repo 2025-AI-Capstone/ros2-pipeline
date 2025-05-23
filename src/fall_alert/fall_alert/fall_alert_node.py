@@ -18,7 +18,7 @@ class FallAlertNode(Node):
             10
         )
 
-        self.alert_publisher = self.create_publisher(String, 'fall_alert', 10)
+        self.alert_publisher = self.create_publisher(String, 'fall_alert/warning', 10)
 
         self.fall_history = deque()
         self.fall_window_sec = 5
@@ -38,7 +38,7 @@ class FallAlertNode(Node):
         alert_msg = String()
         alert_msg.data = "Fall detected. Sending alert to server."
         self.alert_publisher.publish(alert_msg)
-        self.get_logger().warn("published message: " ,alert_msg.data)
+        self.get_logger().info("published message:{alert_msg.data}")
 
         data = {
             "user_id": self.user_id,
@@ -46,16 +46,16 @@ class FallAlertNode(Node):
             "status": "unconfirmed",
             "confidence_score": confidence_score
         }
-
+        
         try:
             response = requests.post("http://localhost:8000/event-logs", json=data)
             if response.status_code == 200:
                 self.get_logger().info("Alert successfully sent to server.")
             else:
-                self.get_logger().error(f"Server error: {response.status_code} - {response.text}")
+                self.get_logger().info(f"Server error: {response.status_code} - {response.text}")
         except Exception as e:
-            self.get_logger().error(f"Failed to send alert to server: {e}")
-
+            self.get_logger().info(f"Failed to send alert to server: {e}")
+    
 def main(args=None):
     rclpy.init(args=args)
     node = FallAlertNode()
