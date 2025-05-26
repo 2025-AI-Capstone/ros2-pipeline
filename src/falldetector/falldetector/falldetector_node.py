@@ -104,8 +104,6 @@ class FallDetectorNode(Node):
                     self.msg_count += 1
 
                 self.bbox_trigger = False  # 트리거 초기화
-            else:
-                self.get_logger().info("No valid keypoints or bbox trigger not activated.")
 
         except Exception as e:
             self.get_logger().error(f"Failed to process fall detection: {e}")
