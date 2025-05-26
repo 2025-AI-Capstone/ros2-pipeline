@@ -27,10 +27,6 @@ class Regenerator(Node):
         )
         sync.registerCallback(self.synced_callback)
         self.cv_bridge = CvBridge()
-        # 디렉토리 설정
-        self.save_dir = Path('./dashboard_logs')
-        self.save_dir.mkdir(parents=True, exist_ok=True)
-        self.save_count = 0
 
         # JSON publisher for dashboard
         self.dashboard_pub = self.create_publisher(String, 'dashboard/data', 10)
@@ -52,17 +48,6 @@ class Regenerator(Node):
         _, buffer = cv2.imencode('.jpg', cv_image)
         image_base64 = base64.b64encode(buffer).decode('utf-8')
 
-        '''
-        # Tracked objects
-        tracked_objs = [
-            {'id': obj.id, 'bbox': {
-                'x': obj.bbox.x,
-                'y': obj.bbox.y,
-                'width': obj.bbox.width,
-                'height': obj.bbox.height
-            }} for obj in tracked_msg.tracked_objects
-        ]
-        '''
         # Dashboard json
         dashboard_data = {
             'image': image_base64,
@@ -75,11 +60,6 @@ class Regenerator(Node):
         dashboard_msg = String()
         dashboard_msg.data = json.dumps(dashboard_data)
         self.dashboard_pub.publish(dashboard_msg)
-        # JSON 파일로 저장
-        save_path = self.save_dir / f'data_{self.save_count:05d}.json'
-        with open(save_path, 'w') as f:
-            json.dump(dashboard_data, f, indent=2)
-        self.save_count += 1
 
 def draw_keypoints(image, keypoints):
     '''
