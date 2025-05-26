@@ -7,6 +7,7 @@ from agent.modules.agent_components import initialize_agent_components
 from langchain.chat_models import ChatOpenAI
 import os
 from dotenv import load_dotenv
+import requests
 
 class AgentNode(Node):
     def __init__(self):
@@ -49,6 +50,8 @@ class AgentNode(Node):
         out = String()
         out.data = answer.content.strip()
         self.response_publisher.publish(out)
+        log = {'query':input_text,'answer':answer.content.strip()}
+        send_log(log)
         self.get_logger().info(f"Published answer: {answer.content}")
 
     def fall_alert_callback(self, msg: String):
@@ -59,6 +62,25 @@ class AgentNode(Node):
         self.fall_alert = True
         self.get_logger().info("Fall detected → triggering STT")
         self.stt_trigger_pub.publish(Empty())
+
+def send_log(self, log):
+
+
+    data = {
+        "user_id": self.user_id,
+        "event_type": "talk",
+        "status": log,
+        "confidence_score": 0
+    }
+    
+    try:
+        response = requests.post("http://localhost:8000/event-logs", json=data)
+        if response.status_code == 200:
+            self.get_logger().info("Successfully sent to server.")
+        else:
+            self.get_logger().info(f"Server error: {response.status_code} - {response.text}")
+    except Exception as e:
+        self.get_logger().info(f"Failed to send log to server: {e}")
 
 def main(args=None):
     rclpy.init(args=args)
