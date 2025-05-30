@@ -19,10 +19,11 @@ class Regenerator(Node):
         image_sub = message_filters.Subscriber(self, Image, 'camera/image_raw')
         bbox_sub = message_filters.Subscriber(self, CustomDetection2D, 'detector/bboxes')
         keypoints_sub = message_filters.Subscriber(self, JointState, 'detector/keypoints')
+        fall_sub = message_filters.Subscriber(self, String, 'falldetector/falldets')
         # tracked_sub = message_filters.Subscriber(self, CustomTrackedObjects, 'tracker/tracked_objects') 
         # data synchronization
         sync = message_filters.ApproximateTimeSynchronizer(
-            [image_sub, bbox_sub, keypoints_sub],
+            [image_sub, bbox_sub, keypoints_sub, fall_sub],
             queue_size=10, slop=0.2
         )
         sync.registerCallback(self.synced_callback)
@@ -31,7 +32,7 @@ class Regenerator(Node):
         # JSON publisher for dashboard
         self.dashboard_pub = self.create_publisher(String, 'dashboard/data', 10)
     
-    def synced_callback(self, image_msg, bbox_msg, keypoint_msg):
+    def synced_callback(self, image_msg, bbox_msg, keypoint_msg, fall_msg):
         # Convert ROS image to OpenCV
         cv_image = self.cv_bridge.imgmsg_to_cv2(image_msg, desired_encoding='bgr8')
 
@@ -53,7 +54,7 @@ class Regenerator(Node):
             'image': image_base64,
             'bboxes': serialized_bbox,
             'keypoints': keypoints_data.tolist(),
-            'falldetections': np.array(keypoint_msg.position).tolist(),
+            'fall_detection': fall_msg.data,
             # 'tracked_objects': tracked_objs
         }
 
