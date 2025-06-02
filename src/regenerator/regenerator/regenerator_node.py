@@ -4,13 +4,17 @@ from cv_bridge import CvBridge
 import cv2
 import os
 from pathlib import Path
-from custom_msgs.msg import CustomDetection2D, CustomTrackedObjects
+from custom_msgs.msg import CustomDetection2D
 from sensor_msgs.msg import Image, JointState
 from std_msgs.msg import String
+from std_srvs.srv import SetBool
 import message_filters
 import base64
 import json
 import numpy as np
+import requests
+import time
+from datetime import datetime
 
 class Regenerator(Node):
     def __init__(self):
@@ -20,7 +24,7 @@ class Regenerator(Node):
         bbox_sub = message_filters.Subscriber(self, CustomDetection2D, 'detector/bboxes')
         keypoints_sub = message_filters.Subscriber(self, JointState, 'detector/keypoints')
         fall_sub = message_filters.Subscriber(self, String, 'falldetector/falldets')
-        # tracked_sub = message_filters.Subscriber(self, CustomTrackedObjects, 'tracker/tracked_objects') 
+        
         # data synchronization
         sync = message_filters.ApproximateTimeSynchronizer(
             [image_sub, bbox_sub, keypoints_sub, fall_sub],
@@ -31,6 +35,24 @@ class Regenerator(Node):
 
         # JSON publisher for dashboard
         self.dashboard_pub = self.create_publisher(String, 'dashboard/data', 10)
+        
+        # Service clients for health checks
+        self.camera_client = self.create_client(SetBool, 'camera/check_camera')
+        self.detector_client = self.create_client(SetBool, 'detector/check_detector')
+        self.falldetector_client = self.create_client(SetBool, 'falldetector/check_fall')
+        
+        # Timer for periodic service calls (2 seconds)
+        self.health_check_timer = self.create_timer(2.0, self.health_check_callback)
+        
+        # Track last successful service response time for each node
+        self.last_service_response = {
+            'camera': None,
+            'detector': None,
+            'falldetector': None
+        }
+        
+        self.api_endpoint = "http://localhost:8000/node-statuses" 
+        self.event_id = 1  
     
     def synced_callback(self, image_msg, bbox_msg, keypoint_msg, fall_msg):
         # Convert ROS image to OpenCV
@@ -62,6 +84,97 @@ class Regenerator(Node):
         dashboard_msg.data = json.dumps(dashboard_data)
         self.dashboard_pub.publish(dashboard_msg)
 
+    def health_check_callback(self):
+        """2초마다 실행되는 헬스체크 콜백"""
+        # Camera service check
+        if self.camera_client.service_is_ready():
+            self.call_service_async(self.camera_client, 'camera')
+        else:
+            self.get_logger().warn('Camera service not ready')
+        
+        # Detector service check
+        if self.detector_client.service_is_ready():
+            self.call_service_async(self.detector_client, 'detector')
+        else:
+            self.get_logger().warn('Detector service not ready')
+        
+        # Fall detector service check
+        if self.falldetector_client.service_is_ready():
+            self.call_service_async(self.falldetector_client, 'falldetector')
+        else:
+            self.get_logger().warn('Fall detector service not ready')
+        
+        # 서비스 호출 후 5초 뒤에 상태 보고 스케줄링
+        self.create_timer(5.0, self.send_all_node_status)
+
+    def call_service_async(self, client, service_name):
+        """서비스를 비동기적으로 호출"""
+        request = SetBool.Request()
+        request.data = True  # health check request
+        
+        future = client.call_async(request)
+        future.add_done_callback(lambda f: self.service_response_callback(f, service_name))
+
+    def service_response_callback(self, future, service_name):
+        """서비스 응답을 처리하는 콜백"""
+        try:
+            response = future.result()
+            if response.success:
+                self.last_service_response[service_name] = time.time()
+                self.get_logger().info(f'{service_name} service: {response.message}')
+            else:
+                self.get_logger().warn(f'{service_name} service failed: {response.message}')
+        except Exception as e:
+            self.get_logger().error(f'Service call to {service_name} failed: {str(e)}')
+
+    def send_all_node_status(self):
+        """모든 노드의 상태를 확인하고 API로 전송 (일회성 타이머)"""
+        current_time = time.time()
+        
+        for node_name in ['camera', 'detector', 'falldetector']:
+            # 마지막 서비스 응답이 7초 이내에 있었는지 확인 (2초 간격 + 5초 여유시간)
+            if (self.last_service_response[node_name] is not None and 
+                current_time - self.last_service_response[node_name] < 7):
+                status = "active"
+            else:
+                status = "inactive"
+            
+            self.send_node_status(node_name, status)
+
+    def send_node_status_callback(self):
+        """10초마다 실행되는 노드 상태 전송 콜백"""
+        current_time = time.time()
+        
+        for node_name in ['camera', 'detector', 'falldetector']:
+            # 마지막 서비스 응답이 15초 이내에 있었는지 확인 (5초 간격 + 여유시간)
+            if (self.last_service_response[node_name] is not None and 
+                current_time - self.last_service_response[node_name] < 15):
+                status = "active"
+            else:
+                status = "inactive"
+            
+            self.send_node_status(node_name, status)
+
+    def send_node_status(self, node_name, status):
+        """API에 노드 상태를 전송"""
+        try:
+            payload = {
+                "event_id": self.event_id,
+                "node_name": node_name,
+                "status": status
+            }
+            
+            response = requests.post(self.api_endpoint, json=payload, timeout=5)
+            if response.status_code == 200:
+                self.get_logger().info(f'Node status sent: {node_name} - {status}')
+            else:
+                self.get_logger().warn(f'Failed to send node status: {response.status_code}')
+                
+        except requests.exceptions.RequestException as e:
+            self.get_logger().error(f'Error sending node status: {str(e)}')
+        except Exception as e:
+            self.get_logger().error(f'Unexpected error in send_node_status: {str(e)}')
+
 def draw_keypoints(image, keypoints):
     '''
     draw COCO keypoints on image
@@ -84,6 +197,7 @@ def draw_keypoints(image, keypoints):
                         (int(p2[0]), int(p2[1])), 
                         (0, 0, 255), 2)
     return image
+
 def main(args=None):
     rclpy.init(args=args)
     node = Regenerator()
