@@ -110,7 +110,8 @@ class FallDetectorNode(Node):
                     self.msg_count += 1
 
                 self.bbox_trigger = False  # 트리거 초기화
-
+            else:
+                self.publisher.publish(String(data=0))
         except Exception as e:
             self.get_logger().error(f"Failed to process fall detection: {e}")
 
