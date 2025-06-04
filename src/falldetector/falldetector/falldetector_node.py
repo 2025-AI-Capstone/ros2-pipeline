@@ -1,13 +1,13 @@
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import JointState
+from std_msgs.msg import Bool
 from custom_msgs.msg import CustomBoolean
 from std_srvs.srv import SetBool
 from sklearn.preprocessing import MinMaxScaler
 import torch
 import numpy as np
 import time
-from collections import deque
 from torch_geometric.data import Data
 from falldetector.model import FallDetectionSGAT
 
@@ -34,42 +34,21 @@ class FallDetectorNode(Node):
             people = np.array(msg.position, dtype=np.float32).reshape(-1, 17, 3)
             people = minmax_scale_keypoints(people)  # (N, 18, 3)
 
-            best_candidate = None
-            max_bbox_ratio = 0
-
-            for person in people:
-                x_coords = person[:, 0]
-                y_coords = person[:, 1]
-
-                if np.count_nonzero(x_coords) < 5 or np.count_nonzero(y_coords) < 5:
-                    continue  # 너무 적은 정보는 스킵
-
-                x_min, x_max = np.min(x_coords), np.max(x_coords)
-                y_min, y_max = np.min(y_coords), np.max(y_coords)
-                width = x_max - x_min
-                height = y_max - y_min
-
-                if height <= 0:
-                    continue
-
-                ratio = width / height
-                if ratio > max_bbox_ratio:
-                    max_bbox_ratio = ratio
-                    best_candidate = person
-
             result_msg = CustomBoolean()
             result_msg.header.stamp = msg.header.stamp
             result_msg.header.frame_id = msg.header.frame_id
+            result_msg.is_fall = Bool(data=False)
 
-            if best_candidate is not None and max_bbox_ratio > 0.8:
-                graph = keypoints_to_graph(best_candidate).to(self.device)
+            for person in people:
+                if np.count_nonzero(person[:, :2]) < 10:
+                    continue
+                graph = keypoints_to_graph(person).to(self.device)
                 out = self.model(graph)
-                confidence_score = out.squeeze().item()
-                result_msg.is_fall = confidence_score > 0.5
-                if result_msg.is_fall:
+                confidence = out.squeeze().item()
+                if confidence > 0.5:
+                    result_msg.is_fall = Bool(data=True)
                     self.msg_count += 1
-            else:
-                result_msg.is_fall = False
+                    break  # 첫 낙상 감지자만 처리
 
             self.publisher.publish(result_msg)
 
