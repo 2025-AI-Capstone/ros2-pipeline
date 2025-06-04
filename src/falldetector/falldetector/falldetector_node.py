@@ -43,7 +43,7 @@ class FallDetectorNode(Node):
                 if np.count_nonzero(person[:, :2]) < 10:
                     continue
                 graph = keypoints_to_graph(person).to(self.device)
-                out = self.model(graph)
+                out = self.model(graph.x, graph.edge_index, graph.edge_attr)
                 confidence = out.squeeze().item()
                 if confidence > 0.5:
                     result_msg.is_fall = Bool(data=True)
@@ -80,10 +80,35 @@ def keypoints_to_graph(keypoints_np):  # keypoints_np: (18, 3)
         (11, 12), (5, 11), (6, 12), (17, 5), (17, 6),
         (8, 10), (7, 9), (0, 17)
     ]
-    node_features = torch.tensor(keypoints_np, dtype=torch.float32)
+    
+    # 양방향으로 만듦
     edges = base_edges + [(b, a) for (a, b) in base_edges]
+
     edge_index = torch.tensor(edges, dtype=torch.long).t().contiguous()
-    return Data(x=node_features, edge_index=edge_index)
+    node_features = torch.tensor(keypoints_np, dtype=torch.float32)  # (18, 3)
+
+    edge_attr = []
+    for src, dst in edges:
+        p1 = keypoints_np[src]
+        p2 = keypoints_np[dst]
+
+        # 거리
+        dx = p2[0] - p1[0]
+        dy = p2[1] - p1[1]
+        distance = (dx**2 + dy**2)**0.5
+
+        # 각도 (라디안)
+        angle = np.arctan2(dy, dx)
+
+        # confidence 평균
+        conf_avg = (p1[2] + p2[2]) / 2.0
+
+        edge_attr.append([distance, angle, conf_avg])
+
+    edge_attr = torch.tensor(edge_attr, dtype=torch.float32)
+
+    return Data(x=node_features, edge_index=edge_index, edge_attr=edge_attr)
+
 
 def minmax_scale_keypoints(keypoints_np):
     N = keypoints_np.shape[0]
