@@ -4,7 +4,8 @@ from cv_bridge import CvBridge
 import cv2
 from custom_msgs.msg import CustomDetection2D, CustomBoolean
 from sensor_msgs.msg import Image, JointState
-from std_msgs.msg import String
+from std_msgs.msg import String, Bool
+from std_srvs.srv import SetBool
 import message_filters
 import base64
 import json
@@ -74,7 +75,7 @@ class Regenerator(Node):
                 'image': image_base64,
                 'bboxes': serialized_bbox,
                 'keypoints': keypoints_data.tolist(),
-                'fall_detection': fall_msg.data
+                'fall_detection': fall_msg.is_fall.data
             }
 
             dashboard_msg = String()
