@@ -15,6 +15,7 @@ find_package(builtin_interfaces REQUIRED)
 set(msg_files
   msg/CustomDetection2D.msg
   msg/CustomTrackedObjects.msg
+  msg/CustomBoolean.msg
 )
 
 # Find rosidl_default_generators

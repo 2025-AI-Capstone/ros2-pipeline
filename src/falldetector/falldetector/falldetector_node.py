@@ -1,16 +1,14 @@
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import JointState
-from std_msgs.msg import Float32MultiArray, String
+from std_msgs.msg import Float32MultiArray
+from custom_msgs.msg import CustomBoolean  # custom message
 from std_srvs.srv import SetBool
 from sklearn.preprocessing import MinMaxScaler
-import json
 import torch
 import numpy as np
 import time
 from collections import deque
-import numpy as np
-from sklearn.preprocessing import MinMaxScaler
 from torch_geometric.data import Data
 from falldetector.model import FallDetectionSGAT
 
@@ -20,12 +18,13 @@ class FallDetectorNode(Node):
 
         self.subscription = self.create_subscription(JointState, 'detector/keypoints', self.keypoints_callback, 10)
         self.bbox_subscription = self.create_subscription(Float32MultiArray, 'detector/bboxes', self.bbox_callback, 10)
-        self.publisher = self.create_publisher(String, 'falldetector/falldets', 10)
+        self.publisher = self.create_publisher(CustomBoolean, 'falldetector/falldets', 10)
         self.srv = self.create_service(SetBool, 'falldetector/check_fall', self.check_fall_callback)
 
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         self.model = FallDetectionSGAT(in_channels=3).to(self.device)
-        self.model.load_state_dict(torch.load('./src/falldetector/falldetector/checkpoints/stonegat.pth', map_location=self.device)['model_state_dict'])
+        checkpoint = torch.load('./src/falldetector/falldetector/checkpoints/stonegat.pth', map_location=self.device)
+        self.model.load_state_dict(checkpoint['model_state_dict'])
         self.model.eval()
 
         self.bbox_ratio_queue = deque(maxlen=5)
@@ -54,32 +53,28 @@ class FallDetectorNode(Node):
     def keypoints_callback(self, msg: JointState):
         try:
             keypoints = np.array(msg.position, dtype=np.float32).reshape(-1, 17, 3)
-            keypoints = minmax_scale_keypoints(keypoints)  # (N, 18, 3)
-            keypoints = keypoints[0]  # 단일 인물만 사용
+            keypoints = minmax_scale_keypoints(keypoints)
+            keypoints = keypoints[0]  # 단일 인물만 처리
             graph = keypoints_to_graph(keypoints).to(self.device)
 
             non_zero_count = torch.count_nonzero(graph.x).item()
+
+            result_msg = CustomBoolean()
+            result_msg.header.stamp = msg.header.stamp
+            result_msg.header.frame_id = msg.header.frame_id
+
             if non_zero_count > 9 and self.bbox_trigger:
                 out = self.model(graph)
                 confidence_score = out.squeeze().item()
-                if confidence_score > 0.5:
-                    result_msg = String()
-                    result_msg.header.stamp = msg.header.stamp
-                    result = {
-                        "timestamp": msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9,
-                        "frame_id": msg.header.frame_id,
-                        "confidence_score": confidence_score,
-                    }
-                    result_msg.data = json.dumps(result)
-                    self.publisher.publish(result_msg)
+                result_msg.is_fall = confidence_score > 0.5
+                if result_msg.is_fall:
                     self.msg_count += 1
-
                 self.bbox_trigger = False
             else:
-                result_msg = String()
-                result_msg.header.stamp = msg.header.stamp
+                result_msg.is_fall = False
 
-                self.publisher.publish(result_msg(data="0"))
+            self.publisher.publish(result_msg)
+
         except Exception as e:
             self.get_logger().error(f"Failed to process fall detection: {e}")
 
@@ -100,7 +95,7 @@ class FallDetectorNode(Node):
         self.msg_count = 0
         self.start_time = time.time()
 
-# 그래프 생성
+# === 그래프 생성 ===
 def keypoints_to_graph(keypoints_np):  # keypoints_np: (18, 3)
     base_edges = [
         (0, 1), (0, 2), (1, 3), (2, 4),
@@ -114,7 +109,7 @@ def keypoints_to_graph(keypoints_np):  # keypoints_np: (18, 3)
     edge_index = torch.tensor(edges, dtype=torch.long).t().contiguous()
     return Data(x=node_features, edge_index=edge_index)
 
-# 스케일링 및 18번 추가
+# === MinMax 정규화 및 어깨 중간점 추가 ===
 def minmax_scale_keypoints(keypoints_np):
     N = keypoints_np.shape[0]
     scaled = np.zeros((N, 18, 3), dtype=np.float32)
