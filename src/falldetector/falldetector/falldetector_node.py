@@ -1,8 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import JointState
-from std_msgs.msg import Float32MultiArray
-from custom_msgs.msg import CustomBoolean  # custom message
+from custom_msgs.msg import CustomBoolean
 from std_srvs.srv import SetBool
 from sklearn.preprocessing import MinMaxScaler
 import torch
@@ -17,7 +16,6 @@ class FallDetectorNode(Node):
         super().__init__('falldetector_node')
 
         self.subscription = self.create_subscription(JointState, 'detector/keypoints', self.keypoints_callback, 10)
-        self.bbox_subscription = self.create_subscription(Float32MultiArray, 'detector/bboxes', self.bbox_callback, 10)
         self.publisher = self.create_publisher(CustomBoolean, 'falldetector/falldets', 10)
         self.srv = self.create_service(SetBool, 'falldetector/check_fall', self.check_fall_callback)
 
@@ -27,50 +25,49 @@ class FallDetectorNode(Node):
         self.model.load_state_dict(checkpoint['model_state_dict'])
         self.model.eval()
 
-        self.bbox_ratio_queue = deque(maxlen=5)
-        self.bbox_trigger = False
-
         self.create_timer(10, self.printlog)
         self.msg_count = 0
         self.start_time = time.time()
 
-    def bbox_callback(self, msg: Float32MultiArray):
-        data = msg.data
-        if len(data) < 5:
-            return
-        x1, y1, x2, y2, conf = data[:5]
-        width = x2 - x1
-        height = y2 - y1
-        if height <= 0:
-            return
-        ratio = width / height
-        self.bbox_ratio_queue.append(ratio)
-        if len(self.bbox_ratio_queue) == self.bbox_ratio_queue.maxlen:
-            delta = max(self.bbox_ratio_queue) - min(self.bbox_ratio_queue)
-            if delta > 0.8:
-                self.bbox_trigger = True
-
     def keypoints_callback(self, msg: JointState):
         try:
-            keypoints = np.array(msg.position, dtype=np.float32).reshape(-1, 17, 3)
-            keypoints = minmax_scale_keypoints(keypoints)
-            keypoints = keypoints[0]  # 단일 인물만 처리
-            graph = keypoints_to_graph(keypoints).to(self.device)
+            people = np.array(msg.position, dtype=np.float32).reshape(-1, 17, 3)
+            people = minmax_scale_keypoints(people)  # (N, 18, 3)
 
-            non_zero_count = torch.count_nonzero(graph.x).item()
+            best_candidate = None
+            max_bbox_ratio = 0
+
+            for person in people:
+                x_coords = person[:, 0]
+                y_coords = person[:, 1]
+
+                if np.count_nonzero(x_coords) < 5 or np.count_nonzero(y_coords) < 5:
+                    continue  # 너무 적은 정보는 스킵
+
+                x_min, x_max = np.min(x_coords), np.max(x_coords)
+                y_min, y_max = np.min(y_coords), np.max(y_coords)
+                width = x_max - x_min
+                height = y_max - y_min
+
+                if height <= 0:
+                    continue
+
+                ratio = width / height
+                if ratio > max_bbox_ratio:
+                    max_bbox_ratio = ratio
+                    best_candidate = person
 
             result_msg = CustomBoolean()
             result_msg.header.stamp = msg.header.stamp
+            result_msg.header.frame_id = msg.header.frame_id
 
-            if non_zero_count > 9 and self.bbox_trigger:
+            if best_candidate is not None and max_bbox_ratio > 0.8:
+                graph = keypoints_to_graph(best_candidate).to(self.device)
                 out = self.model(graph)
                 confidence_score = out.squeeze().item()
-                if confidence_score > 0.5:
-                    result_msg.is_fall = True
-                else:
-                    result_msg.is_fall = False
-
-                self.bbox_trigger = False
+                result_msg.is_fall = confidence_score > 0.5
+                if result_msg.is_fall:
+                    self.msg_count += 1
             else:
                 result_msg.is_fall = False
 
@@ -96,7 +93,6 @@ class FallDetectorNode(Node):
         self.msg_count = 0
         self.start_time = time.time()
 
-# === 그래프 생성 ===
 def keypoints_to_graph(keypoints_np):  # keypoints_np: (18, 3)
     base_edges = [
         (0, 1), (0, 2), (1, 3), (2, 4),
