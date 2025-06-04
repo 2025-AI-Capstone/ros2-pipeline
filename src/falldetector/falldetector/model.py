@@ -8,7 +8,7 @@ from torch_geometric.nn import GATv2Conv, GCNConv
 
 # edge atrribute 설정 조심
 class FallDetectionSGAT(nn.Module):
-    def __init__(self, in_channels, hidden_channels=32, out_channels=1, edge_attr_dim=None):
+    def __init__(self, in_channels, hidden_channels=32, out_channels=1, edge_attr_dim=3):
         super(FallDetectionSGAT, self).__init__()
         
         self.gat1 = GATv2Conv(in_channels, hidden_channels, heads=2, concat=False, edge_dim=edge_attr_dim)

@@ -3,18 +3,16 @@ from rclpy.node import Node
 from sensor_msgs.msg import JointState
 from std_msgs.msg import Float32MultiArray, String
 from std_srvs.srv import SetBool
-import math
 from sklearn.preprocessing import MinMaxScaler
 import json
 import torch
 import numpy as np
 import time
 from collections import deque
-import math
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 from torch_geometric.data import Data
-from falldetector.falldetector.model import FallDetectionGAT
+from falldetector.model import FallDetectionSGAT
 
 class FallDetectorNode(Node):
     def __init__(self):
@@ -26,8 +24,8 @@ class FallDetectorNode(Node):
         self.srv = self.create_service(SetBool, 'falldetector/check_fall', self.check_fall_callback)
 
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-        self.model = FallDetectionGAT(in_channels=3).to(self.device)
-        self.model.load_state_dict(torch.load('./src/falldetector/falldetector/checkpoints/stonegat.pth', map_location=self.device))
+        self.model = FallDetectionSGAT(in_channels=3).to(self.device)
+        self.model.load_state_dict(torch.load('./src/falldetector/falldetector/checkpoints/stonegat.pth', map_location=self.device)['model_state_dict'])
         self.model.eval()
 
         self.bbox_ratio_queue = deque(maxlen=5)
@@ -66,6 +64,7 @@ class FallDetectorNode(Node):
                 confidence_score = out.squeeze().item()
                 if confidence_score > 0.5:
                     result_msg = String()
+                    result_msg.header.stamp = msg.header.stamp
                     result = {
                         "timestamp": msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9,
                         "frame_id": msg.header.frame_id,
@@ -77,7 +76,10 @@ class FallDetectorNode(Node):
 
                 self.bbox_trigger = False
             else:
-                self.publisher.publish(String(data="0"))
+                result_msg = String()
+                result_msg.header.stamp = msg.header.stamp
+
+                self.publisher.publish(result_msg(data="0"))
         except Exception as e:
             self.get_logger().error(f"Failed to process fall detection: {e}")
 
