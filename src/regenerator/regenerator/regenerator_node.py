@@ -51,7 +51,7 @@ class Regenerator(Node):
             'falldetector': None
         }
         
-        self.api_endpoint = "http://localhost:8000/node-statuses" 
+        self.api_endpoint = "http://localhost:8000/system-statuses" 
         self.event_id = 1  
     
     def synced_callback(self, image_msg, bbox_msg, keypoint_msg, fall_msg):
@@ -149,9 +149,9 @@ class Regenerator(Node):
             # 마지막 서비스 응답이 15초 이내에 있었는지 확인 (5초 간격 + 여유시간)
             if (self.last_service_response[node_name] is not None and 
                 current_time - self.last_service_response[node_name] < 15):
-                status = "active"
+                status = "Active"
             else:
-                status = "inactive"
+                status = "Inactive"
             
             self.send_node_status(node_name, status)
 
