@@ -2,9 +2,7 @@ import rclpy
 from rclpy.node import Node
 from cv_bridge import CvBridge
 import cv2
-import os
-from pathlib import Path
-from custom_msgs.msg import CustomDetection2D
+from custom_msgs.msg import CustomDetection2D, CustomBoolean
 from sensor_msgs.msg import Image, JointState
 from std_msgs.msg import String
 from std_srvs.srv import SetBool
@@ -14,7 +12,6 @@ import json
 import numpy as np
 import requests
 import time
-from datetime import datetime
 
 class Regenerator(Node):
     def __init__(self):
@@ -23,7 +20,7 @@ class Regenerator(Node):
         image_sub = message_filters.Subscriber(self, Image, 'camera/image_raw')
         bbox_sub = message_filters.Subscriber(self, CustomDetection2D, 'detector/bboxes')
         keypoints_sub = message_filters.Subscriber(self, JointState, 'detector/keypoints')
-        fall_sub = message_filters.Subscriber(self, String, 'falldetector/falldets')
+        fall_sub = message_filters.Subscriber(self, CustomBoolean, 'falldetector/falldets')
         
         # data synchronization
         sync = message_filters.ApproximateTimeSynchronizer(
@@ -77,7 +74,6 @@ class Regenerator(Node):
             'bboxes': serialized_bbox,
             'keypoints': keypoints_data.tolist(),
             'fall_detection': fall_msg.data,
-            # 'tracked_objects': tracked_objs
         }
 
         dashboard_msg = String()

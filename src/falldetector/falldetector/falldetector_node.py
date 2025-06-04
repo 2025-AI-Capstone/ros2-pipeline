@@ -61,14 +61,15 @@ class FallDetectorNode(Node):
 
             result_msg = CustomBoolean()
             result_msg.header.stamp = msg.header.stamp
-            result_msg.header.frame_id = msg.header.frame_id
 
             if non_zero_count > 9 and self.bbox_trigger:
                 out = self.model(graph)
                 confidence_score = out.squeeze().item()
-                result_msg.is_fall = confidence_score > 0.5
-                if result_msg.is_fall:
-                    self.msg_count += 1
+                if confidence_score > 0.5:
+                    result_msg.is_fall = True
+                else:
+                    result_msg.is_fall = False
+
                 self.bbox_trigger = False
             else:
                 result_msg.is_fall = False
@@ -109,7 +110,6 @@ def keypoints_to_graph(keypoints_np):  # keypoints_np: (18, 3)
     edge_index = torch.tensor(edges, dtype=torch.long).t().contiguous()
     return Data(x=node_features, edge_index=edge_index)
 
-# === MinMax 정규화 및 어깨 중간점 추가 ===
 def minmax_scale_keypoints(keypoints_np):
     N = keypoints_np.shape[0]
     scaled = np.zeros((N, 18, 3), dtype=np.float32)
