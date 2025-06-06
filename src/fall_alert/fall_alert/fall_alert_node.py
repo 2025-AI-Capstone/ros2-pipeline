@@ -21,7 +21,7 @@ class FallAlertNode(Node):
 
         # 최근 낙상 여부 기록 (timestamp, is_fall)
         self.fall_history = deque()
-        self.fall_window_sec = 5  # 최근 5초간 확인
+        self.fall_window_sec = 5 
         self.threshold_ratio = 0.5  # 50% 이상이면 alert
         self.last_alert_time = 0
         self.alert_cooldown = 10  # 최소 10초 간격으로 alert
