@@ -16,64 +16,71 @@ import datetime
 class STTNode(Node):
     def __init__(self):
         super().__init__('stt_node')
-        
-        # set logging
+
+        # 로깅 설정
         self.setup_logging()
-        
-        # load environment variables
+
+        # 환경변수 로딩
         load_dotenv()
         self.logger.info('Environment variables loaded')
-        
-        # publisher for recognized text
+
+        # 발화 텍스트 퍼블리시 토픽
         self.publisher = self.create_publisher(String, 'stt/speech_text', 10)
-        
-        # subscription for trigger requests
+
+        # 외부 트리거 수신
         self.trigger_sub = self.create_subscription(
             Empty,
             'agent/trigger',
             self.trigger_callback,
             10
         )
-        
-        # load Whisper model
+
+        # Whisper 모델 로드
         start_time = time.time()
         self.model = whisper.load_model("base")
         load_time = time.time() - start_time
         self.logger.info(f'Whisper model loaded in {load_time:.2f} seconds')
-        
-        # initialize Picovoice Porcupine for wake word detection
+
+        # 사용자 정의 wakeword 경로 지정
         access_key = os.getenv('PICOVOICE_ACCESS_KEY')
+        keyword_path = os.getenv('WAKEWORD_PATH', './src/stt/wake_word/포커스_ko_linux_v3_0_0.ppn')
+
         if not access_key:
             self.logger.error('PICOVOICE_ACCESS_KEY not set')
             raise RuntimeError('PICOVOICE_ACCESS_KEY not set')
+
+        if not os.path.exists(keyword_path):
+            self.logger.error(f'Wakeword .ppn file not found: {keyword_path}')
+            raise FileNotFoundError(f'Wakeword file not found: {keyword_path}')
+
+        # Porcupine 초기화
         try:
             self.porcupine = pvporcupine.create(
                 access_key=access_key,
-                keywords=['computer']
+                keyword_paths=[keyword_path]
             )
-            self.logger.info('Porcupine initialized successfully')
+            self.logger.info(f'Porcupine initialized with keyword file: {keyword_path}')
         except Exception as e:
             self.logger.error(f'Failed to initialize Porcupine: {e}')
             raise
-        
-        # audio configuration
+
+        # 오디오 설정
         self.CHUNK = 512
         self.FORMAT = pyaudio.paInt16
         self.CHANNELS = 1
         self.RATE = self.porcupine.sample_rate
         self.RECORD_SECONDS = 7
-        
-        # state counters
+
         self.wake_word_count = 0
         self.publish_count = 0
 
-        # initialize PyAudio and start processing thread
+        # PyAudio 및 스레드 실행
         self.audio = pyaudio.PyAudio()
         self.recording_thread = threading.Thread(target=self.process_audio)
         self.recording_thread.daemon = True
         self.recording_thread.start()
-        
-        self.logger.info('STT Node initialized and waiting for events')
+
+        self.logger.info('STT Node initialized and listening')
 
     def setup_logging(self):
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -110,7 +117,7 @@ class STTNode(Node):
                 input=True,
                 frames_per_buffer=self.CHUNK
             )
-            self.logger.info('Audio stream opened')
+            self.logger.info('Audio stream opened for wakeword detection')
             while rclpy.ok():
                 pcm = stream.read(self.CHUNK, exception_on_overflow=False)
                 pcm_unpacked = struct.unpack_from("h" * self.CHUNK, pcm)
