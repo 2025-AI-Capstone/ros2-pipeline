@@ -98,7 +98,7 @@ class AgentNode(Node):
         data = {
             "user_id": self.user_id,
             "event_type": "talk",
-            "status": log,
+            "message": log,
             "confidence_score": 0
         }
         
