@@ -12,7 +12,7 @@ ROUTINE_ENDPOINT = f"{FASTAPI_BASE_URL}/routines/me"
 USERNAME = "홍길동"
 PASSWORD = "1234"
 
-class RoutineScheduler(Node):
+class Scheduler(Node):
     def __init__(self):
         super().__init__('routine_scheduler')
         self.publisher_ = self.create_publisher(String, 'routine_alarm_trigger', 10)
@@ -95,7 +95,7 @@ class RoutineScheduler(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = RoutineScheduler()
+    node = Scheduler()
     rclpy.spin(node)
     node.destroy_node()
     rclpy.shutdown()

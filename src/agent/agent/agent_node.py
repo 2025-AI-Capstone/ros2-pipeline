@@ -8,6 +8,7 @@ from langchain.chat_models import ChatOpenAI
 import os
 from dotenv import load_dotenv
 import requests
+import json
 
 class AgentNode(Node):
     def __init__(self):
@@ -27,6 +28,7 @@ class AgentNode(Node):
         self.create_subscription(String, 'stt/speech_text', self.text_callback, 10)
         # fall detection subscription
         self.create_subscription(String, 'fall_alert/warning', self.fall_alert_callback, 10)
+        self.create_subscription(String, 'routine_alarm_trigger', self.routine_callback, 10)
         # publish LLM answer
         self.response_publisher = self.create_publisher(String, 'agent/response', 10)
         # publish STT trigger
@@ -62,6 +64,33 @@ class AgentNode(Node):
         self.fall_alert = True
         self.get_logger().info("Fall detected → triggering STT")
         self.stt_trigger_pub.publish(Empty())
+
+    def routine_callback(self, msg: String):
+        try:
+            routine = json.loads(msg.data)
+            title = routine.get("title", "루틴")
+            alarm_time = routine.get("alarm_time", None)
+
+            response_text = f"지금은 '{title}' 루틴 시간입니다."
+            if alarm_time:
+                response_text += f" ({alarm_time})"
+
+            response_text += " 실행하시겠습니까?"
+
+            out = String()
+            out.data = response_text
+            self.response_publisher.publish(out)
+            self.get_logger().info(f"Published routine alert: {response_text}")
+
+            # 로그로도 전송
+            self.send_log({
+                "type": "routine",
+                "received": msg.data,
+                "response": response_text
+            })
+
+        except Exception as e:
+            self.get_logger().error(f"Failed to handle routine message: {e}")
 
     def send_log(self, log):
 
