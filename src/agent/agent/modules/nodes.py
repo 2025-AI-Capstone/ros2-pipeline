@@ -124,16 +124,12 @@ def generator(state: AgentState) -> Dict[str, Any]:
 
 def send_emergency_report(state: AgentState) -> Dict[str, Any]:
     report_data = {
-        "user_id": 1,
-        "event": "fall_detected",
-        "status": state.get("voice_response", "unknown"),
-        "timestamp": "to-be-filled",
-        "details": "응답 없음 또는 신고 요청 감지로 인한 자동 신고"
+        "message":"FOCUS:낙상이 감지되어 자동으로 신고되었습니다. 안전을 위해 빠른 확인을 부탁드립니다."
     }
     backend_url = state["agent_components"].get("backend_url", "http://localhost:8080")
 
     try:
-        requests.post(f"{backend_url}/emergency/report", json=report_data, timeout=3)
+        requests.post(f"{backend_url}/emergency/send-alert", json=report_data, timeout=3)
         state["final_answer"] = "응급 신고가 전송되었습니다."
     except Exception as e:
         state["final_answer"] = f"신고 요청 중 오류 발생: {e}"
