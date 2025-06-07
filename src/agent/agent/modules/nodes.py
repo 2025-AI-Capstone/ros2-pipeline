@@ -88,21 +88,41 @@ def get_news(state: AgentState) -> Dict[str, Any]:
 
 
 def get_db(state: AgentState) -> Dict[str, Any]:
-    backend_url = "http://localhost:8000/routines" 
-    routine_payload = state.get("routine_data")
+    login_url = "http://localhost:8000/login"
+    routine_url = "http://localhost:8000/routines"
 
-    if not routine_payload:
+    routine_payload = state.get("routine_data")
+    credentials = {"name": "홍길동", "password": "1234"}
+
+    if not routine_payload or "name" not in credentials or "password" not in credentials:
         state["db_info"] = False
+        state["db_error"] = "Missing routine_data or credentials"
         return state
 
     try:
-        response = requests.post(backend_url, json=routine_payload, timeout=3)
-        response.raise_for_status()
-        print("루틴 등록 성공:", response.json())
+        # 1. 로그인 요청
+        login_res = requests.post(login_url, json=credentials, timeout=5)
+        login_res.raise_for_status()
+        session_id = login_res.cookies.get("session_id")
+
+        if not session_id:
+            state["db_info"] = False
+            state["db_error"] = "No session_id in login response"
+            return state
+
+        # 2. 루틴 등록 요청
+        headers = {
+            "Cookie": f"session_id={session_id}"
+        }
+        routine_res = requests.post(routine_url, json=routine_payload, headers=headers, timeout=5)
+        routine_res.raise_for_status()
+
         state["db_info"] = True
+        state["db_response"] = routine_res.json()
+        state["session_id"] = session_id  # 저장해두면 이후 재사용 가능
     except requests.exceptions.RequestException as e:
-        print("루틴 등록 실패:", str(e))
         state["db_info"] = False
+        state["db_error"] = str(e)
     return state
 
 

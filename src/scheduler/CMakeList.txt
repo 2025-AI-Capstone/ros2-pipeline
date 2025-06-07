@@ -1,0 +1,32 @@
+cmake_minimum_required(VERSION 3.8)
+project(scheduler)
+
+# Find dependencies
+find_package(ament_cmake REQUIRED)
+find_package(rosidl_default_generators REQUIRED)
+find_package(rclpy REQUIRED)
+find_package(sensor_msgs REQUIRED)
+
+# Add service files
+rosidl_generate_interfaces(${PROJECT_NAME}
+  "srv/CheckVideo.srv"
+)
+
+# Install Python modules
+ament_python_install_package(${PROJECT_NAME})
+
+# Install entry points
+install(
+  PROGRAMS
+  scheduler/scheduler_node.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+# Install other resources
+install(
+  DIRECTORY video
+  DESTINATION share/${PROJECT_NAME}
+)
+
+# Export dependencies
+ament_package()

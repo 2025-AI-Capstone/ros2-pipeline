@@ -1,5 +1,0 @@
-video_publisher_node:
-  ros__parameters:
-    video_path: './src/video_publisher/video/MOT17-08-SDP-raw.webm'
-    loop : True
-    fps: 30

@@ -50,7 +50,7 @@ class TrackerNode(Node):
         # subscribe Image topic
         self.subscription_frames = self.create_subscription(
             Image,
-            'video_publisher/frames',
+            'scheduler/frames',
             self.image_callback,
             10
         )

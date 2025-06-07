@@ -8,7 +8,7 @@ def generate_launch_description():
     # 사용 이미지에 따라 노드 명 변경
     video_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([
-            PathJoinSubstitution([get_package_share_directory('video_publisher'), 'launch', 'video_publisher.launch.py'])
+            PathJoinSubstitution([get_package_share_directory('scheduler'), 'launch', 'scheduler.launch.py'])
         ])
     )
     detector_launch = IncludeLaunchDescription(
