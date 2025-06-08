@@ -71,11 +71,7 @@ class AgentNode(Node):
             title = routine.get("title", "루틴")
             alarm_time = routine.get("alarm_time", None)
 
-            response_text = f"지금은 '{title}' 루틴 시간입니다."
-            if alarm_time:
-                response_text += f" ({alarm_time})"
-
-            response_text += " 실행하시겠습니까?"
+            response_text = f"지금은 '{title}' 시간입니다."
 
             out = String()
             out.data = response_text
