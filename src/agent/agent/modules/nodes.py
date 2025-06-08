@@ -96,7 +96,6 @@ def get_db(state: AgentState) -> Dict[str, Any]:
 
     if not routine_payload or "name" not in credentials or "password" not in credentials:
         state["db_info"] = False
-        state["db_error"] = "Missing routine_data or credentials"
         return state
 
     try:
@@ -107,7 +106,6 @@ def get_db(state: AgentState) -> Dict[str, Any]:
 
         if not session_id:
             state["db_info"] = False
-            state["db_error"] = "No session_id in login response"
             return state
 
         # 2. 루틴 등록 요청
@@ -118,11 +116,8 @@ def get_db(state: AgentState) -> Dict[str, Any]:
         routine_res.raise_for_status()
 
         state["db_info"] = True
-        state["db_response"] = routine_res.json()
-        state["session_id"] = session_id  # 저장해두면 이후 재사용 가능
     except requests.exceptions.RequestException as e:
         state["db_info"] = False
-        state["db_error"] = str(e)
     return state
 
 
