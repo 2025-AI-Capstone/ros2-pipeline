@@ -24,7 +24,7 @@ class FallAlertNode(Node):
         self.fall_window_sec = 5 
         self.threshold_ratio = 0.5  # 50% 이상이면 alert
         self.last_alert_time = 0
-        self.alert_cooldown = 10  # 최소 10초 간격으로 alert
+        self.alert_cooldown = 180  # 최소 180초 간격으로 alert
 
         self.user_id = 1
 
