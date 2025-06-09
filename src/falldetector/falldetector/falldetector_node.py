@@ -28,9 +28,8 @@ class FallDetectorNode(Node):
         # self.model.eval()
 
         # ✅ MLP 모델 초기화
-        self.model_mlp = SimpleNN(input_size=54).to(self.device)
-        mlp_ckpt = torch.load('./src/falldetector/falldetector/checkpoints/mlp.pth', map_location=self.device)
-        self.model_mlp.load_state_dict(mlp_ckpt)
+        self.model_mlp = SimpleNN(input_size=34).to(self.device)
+        self.model_mlp.load_state_dict(torch.load('./src/falldetector/falldetector/checkpoints/model.pt', map_location=self.device))
         self.model_mlp.eval()
 
         self.create_timer(10, self.printlog)
@@ -40,8 +39,8 @@ class FallDetectorNode(Node):
     def keypoints_callback(self, msg: JointState):
         try:
             people = np.array(msg.position, dtype=np.float32).reshape(-1, 17, 3)
-            people = minmax_scale_keypoints(people)  # (N, 18, 3)
-
+            # people = minmax_scale_keypoints(people)  # (N, 18, 3)
+            people = people[:, :17, :2]
             result_msg = CustomBoolean()
             result_msg.header.stamp = msg.header.stamp
             result_msg.header.frame_id = msg.header.frame_id
