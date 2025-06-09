@@ -1,18 +1,16 @@
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import String
-from custom_msgs.msg import CustomBoolean
+from std_msgs.msg import Bool, String
 from collections import deque
 import requests
 import time
-import json
 
 class FallAlertNode(Node):
     def __init__(self):
         super().__init__('fall_alert_node')
 
         self.subscription = self.create_subscription(
-            CustomBoolean,
+            Bool,
             'falldetector/falldets',
             self.fall_callback,
             10
@@ -20,25 +18,17 @@ class FallAlertNode(Node):
 
         self.alert_publisher = self.create_publisher(String, 'fall_alert/warning', 10)
 
-        # 최근 낙상 여부 기록 (timestamp, is_fall)
         self.fall_history = deque()
-        self.fall_window_sec = 5 
-        self.threshold_ratio = 0.5  # 50% 이상이면 alert
+        self.fall_window_sec = 5  # 최근 5초 동안의 이력만 유지
+        self.threshold_ratio = 0.5  # 낙상 비율이 50% 이상이면 alert
         self.last_alert_time = 0
-        self.alert_cooldown = 180  # 최소 180초 간격으로 alert
+        self.alert_cooldown = 180  # 180초 간격으로 alert 제한
 
         self.user_id = 1
 
-    def fall_callback(self, msg: String):
+    def fall_callback(self, msg: Bool):
         now = time.time()
-
-        try:
-            data = json.loads(msg.data)
-            is_fall = data.get('is_fall', False)
-            confidence_score = data.get('confidence_score', 0.0)
-        except Exception as e:
-            self.get_logger().error(f"Invalid message format: {e}")
-            return
+        is_fall = msg.data
 
         self.fall_history.append((now, is_fall))
         self._clean_old_entries(now)
@@ -50,13 +40,13 @@ class FallAlertNode(Node):
         if fall_ratio >= self.threshold_ratio:
             if now - self.last_alert_time > self.alert_cooldown:
                 self.last_alert_time = now
-                self.send_alert(confidence_score)
+                self.send_alert()
 
     def _clean_old_entries(self, current_time):
         while self.fall_history and current_time - self.fall_history[0][0] > self.fall_window_sec:
             self.fall_history.popleft()
 
-    def send_alert(self, confidence_score: float):
+    def send_alert(self):
         alert_msg = String()
         alert_msg.data = "Fall detected. Sending alert to server."
         self.alert_publisher.publish(alert_msg)
@@ -65,8 +55,7 @@ class FallAlertNode(Node):
         data = {
             "user_id": self.user_id,
             "event_type": "fall",
-            "status": "unconfirmed",
-            "confidence_score": confidence_score
+            "status": "unconfirmed"
         }
 
         try:
