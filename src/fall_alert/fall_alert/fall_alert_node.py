@@ -1,6 +1,7 @@
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Bool, String
+from std_msgs.msg import String
+from custom_msgs.msg import CustomBoolean
 from collections import deque
 import requests
 import time
@@ -10,7 +11,7 @@ class FallAlertNode(Node):
         super().__init__('fall_alert_node')
 
         self.subscription = self.create_subscription(
-            Bool,
+            CustomBoolean,
             'falldetector/falldets',
             self.fall_callback,
             10
@@ -19,16 +20,16 @@ class FallAlertNode(Node):
         self.alert_publisher = self.create_publisher(String, 'fall_alert/warning', 10)
 
         self.fall_history = deque()
-        self.fall_window_sec = 5  # 최근 5초 동안의 이력만 유지
-        self.threshold_ratio = 0.5  # 낙상 비율이 50% 이상이면 alert
+        self.fall_window_sec = 5  # 최근 5초 이내 기록 유지
+        self.threshold_ratio = 0.5  # 50% 이상이면 알림
         self.last_alert_time = 0
-        self.alert_cooldown = 180  # 180초 간격으로 alert 제한
+        self.alert_cooldown = 180  # 최소 180초 간격 알림 제한
 
         self.user_id = 1
 
-    def fall_callback(self, msg: Bool):
+    def fall_callback(self, msg: CustomBoolean):
         now = time.time()
-        is_fall = msg.data
+        is_fall = msg.is_fall.data  # Bool 메시지의 실제 데이터 추출
 
         self.fall_history.append((now, is_fall))
         self._clean_old_entries(now)
