@@ -41,13 +41,13 @@ class FallAlertNode(Node):
         if fall_ratio >= self.threshold_ratio:
             if now - self.last_alert_time > self.alert_cooldown:
                 self.last_alert_time = now
-                self.send_alert()
+                self.send_alert(fall_ratio)
 
     def _clean_old_entries(self, current_time):
         while self.fall_history and current_time - self.fall_history[0][0] > self.fall_window_sec:
             self.fall_history.popleft()
 
-    def send_alert(self):
+    def send_alert(self, fall_ratio):
         alert_msg = String()
         alert_msg.data = "Fall detected. Sending alert to server."
         self.alert_publisher.publish(alert_msg)
@@ -56,6 +56,7 @@ class FallAlertNode(Node):
         data = {
             "user_id": self.user_id,
             "event_type": "fall",
+            "confidence_score": fall_ratio,
             "status": "unconfirmed"
         }
 
