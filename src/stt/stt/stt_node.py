@@ -57,7 +57,8 @@ class STTNode(Node):
         try:
             self.porcupine = pvporcupine.create(
                 access_key=access_key,
-                keyword_paths=[keyword_path]
+                keyword_paths=[keyword_path],
+                model_path='./src/stt/wake_word/porcupine_params_ko.pv',
             )
             self.logger.info(f'Porcupine initialized with keyword file: {keyword_path}')
         except Exception as e:
