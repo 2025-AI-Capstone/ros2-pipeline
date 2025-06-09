@@ -21,7 +21,7 @@ class FallDetectorNode(Node):
 
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         self.model = FallDetectionSGAT(in_channels=3).to(self.device)
-        checkpoint = torch.load('./src/falldetector/falldetector/checkpoints/stonegat.pth', map_location=self.device)
+        checkpoint = torch.load('./src/falldetector/falldetector/checkpoints/stonegat.pt', map_location=self.device, weights_only=True)
         self.model.load_state_dict(checkpoint['model_state_dict'])
         self.model.eval()
 
@@ -45,7 +45,7 @@ class FallDetectorNode(Node):
                 graph = keypoints_to_graph(person).to(self.device)
                 out = self.model(graph.x, graph.edge_index, graph.edge_attr)
                 confidence = out.squeeze().item()
-                if confidence > 0.5:
+                if confidence > 0.9:
                     result_msg.is_fall = Bool(data=True)
                     self.msg_count += 1
                     break  # 첫 낙상 감지자만 처리

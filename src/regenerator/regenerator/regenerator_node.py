@@ -80,7 +80,7 @@ class Regenerator(Node):
 
             self.window.append(dashboard_data)
             self.publish_dashboard(dashboard_data)
-
+            '''
             # === 낙상 발생 시 서버에 POST ===
             if fall_msg.is_fall.data:
                 self.get_logger().warn("Fall Detected! Sending event to server...")
@@ -110,9 +110,10 @@ class Regenerator(Node):
                         self.get_logger().error(f"Server responded with {response.status_code}: {response.text}")
                 except Exception as e:
                     self.get_logger().error(f"[FallEvent POST Error] {str(e)}")
-
+            '''
         except Exception as e:
             self.get_logger().error(f"[sync_callback] Error: {str(e)}")
+
 
     def publish_dashboard(self, data):
         msg = String()

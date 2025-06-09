@@ -1,6 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
+from custom_msgs.msg import CustomBoolean
 from collections import deque
 import requests
 import time
@@ -11,7 +12,7 @@ class FallAlertNode(Node):
         super().__init__('fall_alert_node')
 
         self.subscription = self.create_subscription(
-            String,
+            CustomBoolean,
             'falldetector/falldets',
             self.fall_callback,
             10
