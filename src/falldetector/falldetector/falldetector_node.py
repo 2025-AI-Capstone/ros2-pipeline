@@ -9,7 +9,7 @@ import torch
 import numpy as np
 import time
 from torch_geometric.data import Data
-from falldetector.model import FallDetectionSGAT
+from falldetector.model import FallDetectionSGAT, SimpleNN  # ✅ MLP 모델 추가
 
 class FallDetectorNode(Node):
     def __init__(self):
@@ -20,10 +20,18 @@ class FallDetectorNode(Node):
         self.srv = self.create_service(SetBool, 'falldetector/check_fall', self.check_fall_callback)
 
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-        self.model = FallDetectionSGAT(in_channels=3).to(self.device)
-        checkpoint = torch.load('./src/falldetector/falldetector/checkpoints/stonegat.pt', map_location=self.device, weights_only=True)
-        self.model.load_state_dict(checkpoint['model_state_dict'])
-        self.model.eval()
+
+        # === 기존 SGAT 모델 초기화 (주석 처리 가능) ===
+        # self.model = FallDetectionSGAT(in_channels=3).to(self.device)
+        # checkpoint = torch.load('./src/falldetector/falldetector/checkpoints/stonegat.pt', map_location=self.device)
+        # self.model.load_state_dict(checkpoint['model_state_dict'])
+        # self.model.eval()
+
+        # ✅ MLP 모델 초기화
+        self.model_mlp = SimpleNN(input_size=54).to(self.device)
+        mlp_ckpt = torch.load('./src/falldetector/falldetector/checkpoints/mlp.pth', map_location=self.device)
+        self.model_mlp.load_state_dict(mlp_ckpt)
+        self.model_mlp.eval()
 
         self.create_timer(10, self.printlog)
         self.msg_count = 0
@@ -42,13 +50,20 @@ class FallDetectorNode(Node):
             for person in people:
                 if np.count_nonzero(person[:, :2]) < 10:
                     continue
-                graph = keypoints_to_graph(person).to(self.device)
-                out = self.model(graph.x, graph.edge_index, graph.edge_attr)
-                confidence = out.squeeze().item()
+
+                # === 기존 SGAT 처리 (주석 처리) ===
+                # graph = keypoints_to_graph(person).to(self.device)
+                # out = self.model(graph.x, graph.edge_index, graph.edge_attr)
+                # confidence = out.squeeze().item()
+
+                # ✅ MLP용 처리
+                input_tensor = torch.tensor(person.flatten(), dtype=torch.float32).unsqueeze(0).to(self.device)
+                confidence = self.model_mlp(input_tensor).squeeze().item()
+
                 if confidence > 0.9:
                     result_msg.is_fall = Bool(data=True)
                     self.msg_count += 1
-                    break  # 첫 낙상 감지자만 처리
+                    break
 
             self.publisher.publish(result_msg)
 
@@ -80,35 +95,20 @@ def keypoints_to_graph(keypoints_np):  # keypoints_np: (18, 3)
         (11, 12), (5, 11), (6, 12), (17, 5), (17, 6),
         (8, 10), (7, 9), (0, 17)
     ]
-    
-    # 양방향으로 만듦
     edges = base_edges + [(b, a) for (a, b) in base_edges]
-
     edge_index = torch.tensor(edges, dtype=torch.long).t().contiguous()
-    node_features = torch.tensor(keypoints_np, dtype=torch.float32)  # (18, 3)
-
+    node_features = torch.tensor(keypoints_np, dtype=torch.float32)
     edge_attr = []
+
     for src, dst in edges:
-        p1 = keypoints_np[src]
-        p2 = keypoints_np[dst]
-
-        # 거리
-        dx = p2[0] - p1[0]
-        dy = p2[1] - p1[1]
+        p1, p2 = keypoints_np[src], keypoints_np[dst]
+        dx, dy = p2[0] - p1[0], p2[1] - p1[1]
         distance = (dx**2 + dy**2)**0.5
-
-        # 각도 (라디안)
         angle = np.arctan2(dy, dx)
-
-        # confidence 평균
         conf_avg = (p1[2] + p2[2]) / 2.0
-
         edge_attr.append([distance, angle, conf_avg])
 
-    edge_attr = torch.tensor(edge_attr, dtype=torch.float32)
-
-    return Data(x=node_features, edge_index=edge_index, edge_attr=edge_attr)
-
+    return Data(x=node_features, edge_index=edge_index, edge_attr=torch.tensor(edge_attr, dtype=torch.float32))
 
 def minmax_scale_keypoints(keypoints_np):
     N = keypoints_np.shape[0]
