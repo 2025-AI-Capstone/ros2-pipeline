@@ -28,37 +28,9 @@ class TTSNode(Node):
         self.temp_dir = tempfile.gettempdir()
         self.temp_file = os.path.join(self.temp_dir, 'temp_speech.mp3')
 
-        # 루틴 경로 및 데이터 로딩
-        self.routine_file_path = Path(__file__).parent / 'routine_data.json'
-        self.routines = self.load_routines()
-        self.announced_times = set()  # 루틴 중복 방지
-
-        # 타이머: 루틴 확인 주기 30초
-        self.timer = self.create_timer(30.0, self.check_routines)
 
         self.get_logger().info('TTS Node is ready')
 
-    def load_routines(self):
-        if not self.routine_file_path.exists():
-            self.get_logger().warn(f"No routine_data.json found at {self.routine_file_path}")
-            return []
-        try:
-            with open(self.routine_file_path, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except Exception as e:
-            self.get_logger().error(f'Error loading routine data: {str(e)}')
-            return []
-
-    def check_routines(self):
-        now = datetime.now().strftime('%H:%M')
-        for routine in self.routines:
-            routine_time = routine.get('time')
-            routine_text = routine.get('text')
-
-            if routine_time == now and routine_time not in self.announced_times:
-                self.get_logger().info(f'⏰ Routine triggered: {routine_text}')
-                self.announced_times.add(routine_time)
-                self.speak(routine_text)
 
     def text_callback(self, msg):
         try:
