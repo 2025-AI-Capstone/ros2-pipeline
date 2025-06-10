@@ -29,7 +29,7 @@ class FallDetectorNode(Node):
 
         # ✅ MLP 모델 초기화
         self.model_mlp = SimpleNN(input_size=34).to(self.device)
-        self.model_mlp.load_state_dict(torch.load('./src/falldetector/falldetector/checkpoints/model.pt', map_location=self.device))
+        self.model_mlp.load_state_dict(torch.load('./src/falldetector/falldetector/checkpoints/fall_detection_model.pt', map_location=self.device))
         self.model_mlp.eval()
 
         self.create_timer(10, self.printlog)
