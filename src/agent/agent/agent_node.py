@@ -1,6 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String, Empty, Bool
+from typing import Dict, Any
 
 from agent.modules.workflow import run_workflow
 from agent.modules.agent_components import initialize_agent_components
@@ -126,8 +127,8 @@ class AgentNode(Node):
         data = {
             "user_id": self.user_id,
             "event_type": log_data.get("event_type", "default"), # Use event_type from log_data or default
-            "status": log_data,  # Pass the entire log_data dict as status
-            "confidence_score": log_data.get("confidence_score", 0.8)
+            "status": str(log_data),  # Pass the entire log_data dict as status
+            "confidence_score": log_data.get("confidence_score", 0)
         }
 
         headers = {"Cookie": f"session_id={self.session_id}"}

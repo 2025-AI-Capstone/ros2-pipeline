@@ -146,7 +146,7 @@ def generator(state: AgentState) -> Dict[str, Any]:
     # Check if this is a routine flow and a message is already set
     if state.get("is_routine_flow") and state.get("routine_result_message"):
         state["final_answer"] = state["routine_result_message"]
-        print(f"generator Returning routine result message: {state["final_answer"]}")
+        
         return state
 
     generator_chain = state["agent_components"]["generator_chain"]

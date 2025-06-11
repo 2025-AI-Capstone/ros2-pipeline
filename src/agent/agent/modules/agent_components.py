@@ -28,7 +28,7 @@ def initialize_agent_components(llm):
     다른 설명, 문장, 마침표 등은 포함하지 마십시오.
     call_weather: 사용자가 날씨 관련 정보를 물어볼 때
     call_news: 사용자가 실시간 정보 또는 뉴스에 관련한 질문을 물어볼 때
-    call_routine: 사용자가 일정 또는 루틴을 저장하거나 조회하길 원할 때
+    call_routine: 사용자가 일정 또는 루틴을 저장,예약, 등록하거나 조회하길 원할 때
     normal:그외
     작업 유형:
     - call_weather
