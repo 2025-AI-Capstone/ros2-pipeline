@@ -13,3 +13,5 @@ class AgentState(TypedDict):
     routine_alarm: Dict[str, Any]
     agent_components: Dict[str, Any]
     voice_response: Optional[str]
+    is_routine_flow: Optional[bool]
+    routine_result_message: Optional[str]
