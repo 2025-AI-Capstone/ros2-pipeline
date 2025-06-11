@@ -115,6 +115,10 @@ def get_db(state: AgentState) -> Dict[str, Any]:
         routine_res = requests.post(routine_url, json=routine_payload, headers=headers, timeout=5)
         routine_res.raise_for_status()
 
+        # Add detailed logging for routine registration response
+        print(f"Routine registration response status: {routine_res.status_code}")
+        print(f"Routine registration response body: {routine_res.text}")
+
         state["db_info"] = True
     except requests.exceptions.RequestException as e:
         state["db_info"] = False
