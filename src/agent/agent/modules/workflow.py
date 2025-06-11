@@ -39,8 +39,8 @@ def run_workflow(input: str, llm: Any, fall_alert: bool = False, agent_component
 
     workflow.add_edge("get_weather", "generator")
     workflow.add_edge("get_news", "generator")
+    workflow.add_edge("get_db", "generator")
     # workflow.add_edge("check_routine_edge", "generator")
-    # workflow.add_edge("get_db", "generator")
 
     workflow.add_conditional_edges(
         "check_routine_edge",

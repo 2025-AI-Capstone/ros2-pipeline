@@ -21,6 +21,7 @@ def check_routine_edge(state: AgentState) -> Dict:
 
     response = check_routine_chain.invoke({"user_input": state["input"]})
     state["check_routine"] = response.content.strip()
+    state["is_routine_flow"] = True
     print(response.content.strip())
     return state
 
