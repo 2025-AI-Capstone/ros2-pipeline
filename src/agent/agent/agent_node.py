@@ -1,6 +1,6 @@
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import String, Empty
+from std_msgs.msg import String, Empty, Bool
 
 from agent.modules.workflow import run_workflow
 from agent.modules.agent_components import initialize_agent_components
@@ -10,18 +10,19 @@ from dotenv import load_dotenv
 import requests
 import json
 
-FASTAPI_BASE_URL = "http://localhost:8000"
-LOGIN_ENDPOINT = f"{FASTAPI_BASE_URL}/login"
-EVENT_LOG_ENDPOINT = f"{FASTAPI_BASE_URL}/event-logs"
-
-USERNAME = "홍길동"
-PASSWORD = "1234"
+# Constants for login and event logging endpoints
+LOGIN_ENDPOINT = "http://localhost:8000/login"
+EVENT_LOG_ENDPOINT = "http://localhost:8000/event-logs"
+USERNAME = "홍길동" # Example username, adjust if needed
+PASSWORD = "1234" # Example password, adjust if needed
 
 class AgentNode(Node):
     def __init__(self):
         super().__init__('agent_node')
 
         load_dotenv()
+        self.user_id = os.getenv("USER_ID", "default_user") # Get USER_ID from env
+        # initialize LangGraph LLM + components
         self.llm = ChatOpenAI(
             temperature=0.7,
             model_name="gpt-3.5-turbo",
@@ -30,8 +31,7 @@ class AgentNode(Node):
         self.agent_components = initialize_agent_components(self.llm)
         self.fall_alert = False
         self.fall_response = "낙상이 감지되었습니다. 비상연락이 필요하신가요?"
-        self.user_id = 1
-        self.session_id = None
+        self.session_id = None # Initialize session_id
 
         self.login()
 
@@ -70,20 +70,16 @@ class AgentNode(Node):
             fall_alert=self.fall_alert,
             agent_components=self.agent_components
         )
-
         self.fall_alert = False
-        if answer is None:
-            answer = "죄송합니다. 응답을 생성할 수 없습니다."
-        elif not isinstance(answer, str):
-            answer = str(answer)    
-        
+
         out = String()
-        out.data = answer
+        out.data = answer.strip()
         self.response_publisher.publish(out)
 
-        # 서버 로그 전송 - message를 문자열로 변경
-        log_message = f"Query: {input_text} | Answer: {answer}"
-        self.send_log("talk", log_message)
+        # Prepare log data as a dictionary for the new send_log signature
+        log_data = {'query':input_text,'answer':answer.strip(), 'event_type': 'talk'}
+        self.send_log(log_data)
+
         self.get_logger().info(f"Published answer: {answer}")
 
     def fall_alert_callback(self, msg: String):
@@ -93,10 +89,10 @@ class AgentNode(Node):
         self.get_logger().info(f"Published fall alert response: {self.fall_response}")
         self.fall_alert = True
         self.stt_trigger_pub.publish(Empty())
-        
-        # 낙상 알림 로그 전송
-        log_message = f"Fall alert detected | Response: {self.fall_response}"
-        self.send_log("fall_alert", log_message)
+
+        # Prepare log data as a dictionary for the new send_log signature
+        log_data = {'message':f"Fall alert detected | Response: {self.fall_response}", 'event_type': 'fall_alert'}
+        self.send_log(log_data)
 
     def routine_callback(self, msg: String):
         try:
@@ -111,14 +107,14 @@ class AgentNode(Node):
             self.response_publisher.publish(out)
             self.get_logger().info(f"Published routine alert: {response_text}")
 
-            # 루틴 알림 로그 전송
-            log_message = f"Routine alert: {title} | Time: {alarm_time} | Response: {response_text}"
-            self.send_log("routine", log_message)
+            # Prepare log data as a dictionary for the new send_log signature
+            log_data = {'message':f"Routine alert: {title} | Time: {alarm_time} | Response: {response_text}", 'event_type': 'routine'}
+            self.send_log(log_data)
 
         except Exception as e:
             self.get_logger().error(f"Failed to handle routine message: {e}")
 
-    def send_log(self, event_type, message, confidence_score=0.8):
+    def send_log(self, log_data: Dict[str, Any]):
         """서버 스키마에 맞게 로그 전송"""
         if not self.session_id:
             self.get_logger().warn("No valid session. Trying to re-login.")
@@ -129,10 +125,9 @@ class AgentNode(Node):
 
         data = {
             "user_id": self.user_id,
-            "event_type": event_type,
-            "message": message,  # 문자열로 변경
-            "status": "completed",  # 필수 필드 추가
-            "confidence_score": confidence_score
+            "event_type": log_data.get("event_type", "default"), # Use event_type from log_data or default
+            "status": log_data,  # Pass the entire log_data dict as status
+            "confidence_score": log_data.get("confidence_score", 0.8)
         }
 
         headers = {"Cookie": f"session_id={self.session_id}"}
@@ -144,7 +139,7 @@ class AgentNode(Node):
             elif response.status_code == 401:
                 self.get_logger().warn("Session expired. Re-authenticating.")
                 self.session_id = None
-                self.send_log(event_type, message, confidence_score)  # 재시도
+                self.send_log(log_data)  # Retry with new session
             else:
                 self.get_logger().error(f"Server error: {response.status_code} - {response.text}")
         except Exception as e:

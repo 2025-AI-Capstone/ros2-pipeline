@@ -92,6 +92,4 @@ def run_workflow(input: str, llm: Any, fall_alert: bool = False, agent_component
 
     result = app.invoke(initial_state)
 
-    final_answer = result.get("final_answer", "")
-    final_answer = final_answer.content
-    return final_answer
+    return result["final_answer"]
