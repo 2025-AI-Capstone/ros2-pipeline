@@ -7,14 +7,19 @@ def task_selector(state: AgentState) -> Dict:
     response = chain.invoke({"user_input": state["input"]})
     print("[Raw LLM output]:", response.content)
     
-    # LLM 응답 후처리
     raw_output = response.content.strip().lower()
-    task_type = re.sub(r'[^a-z_]', '', raw_output)  # 마침표, 따옴표, 종결어미 제거 등
-    
-    # 안정성 검증 및 fallback 처리
-    if task_type not in ["call_weather", "call_news", "call_routine", "normal"]:
-        task_type = "normal"
-    
+
+    # 허용된 작업 유형
+    allowed = ["call_weather", "call_news", "call_routine", "normal"]
+
+    # 정확한 단어만 출력한 경우
+    if raw_output in allowed:
+        task_type = raw_output
+    else:
+        # 출력 중에 허용된 단어가 포함되어 있으면 추출
+        found = [task for task in allowed if task in raw_output]
+        task_type = found[0] if found else "normal"
+
     print("task_type:", task_type)
     state["task_type"] = task_type
     return state
