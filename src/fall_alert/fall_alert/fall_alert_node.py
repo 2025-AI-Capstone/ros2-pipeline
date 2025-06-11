@@ -88,7 +88,7 @@ class FallAlertNode(Node):
             "user_id": self.user_id,
             "event_type": "fall",
             "confidence_score": fall_ratio,
-            "status": "unconfirmed"
+            "status": "낙상이 감지되었습니다."
         }
 
         headers = {"Cookie": f"session_id={self.session_id}"}

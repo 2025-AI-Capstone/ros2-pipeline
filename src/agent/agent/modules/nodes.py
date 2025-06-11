@@ -151,7 +151,7 @@ def send_emergency_report(state: AgentState) -> Dict[str, Any]:
     report_data = {
         "message":"FOCUS:낙상이 감지되어 자동으로 신고되었습니다. 안전을 위해 빠른 확인을 부탁드립니다."
     }
-    backend_url = state["agent_components"].get("backend_url", "http://localhost:8080")
+    backend_url = state["agent_components"].get("backend_url", "http://localhost:8000")
 
     try:
         requests.post(f"{backend_url}/emergency/send-alert", json=report_data, timeout=3)

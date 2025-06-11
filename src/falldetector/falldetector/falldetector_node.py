@@ -32,7 +32,7 @@ class FallDetectorNode(Node):
         self.model_mlp.eval()
         
         # 키포인트 필터링 설정
-        self.zero_threshold = 8
+        self.zero_threshold = 10
 
         self.create_timer(10, self.printlog)
         self.msg_count = 0
@@ -68,7 +68,7 @@ class FallDetectorNode(Node):
                 input_tensor = torch.tensor(person.flatten(), dtype=torch.float32).unsqueeze(0).to(self.device)
                 confidence = self.model_mlp(input_tensor).squeeze().item()
 
-                if confidence > 0.9:
+                if confidence > 0.7:
                     result_msg.is_fall = Bool(data=True)
                     self.msg_count += 1
                     break

@@ -77,8 +77,8 @@ def initialize_agent_components(llm):
 
     # 낙상 후 음성 응답 평가
     check_emergency_prompt = PromptTemplate.from_template("""
-    다음 음성 내용을 보고, 신고 여부를 판단하세요.
-
+    다음 음성 내용을 보고, 신고 여부를 판단하세요. 
+    사용자가 괜찮다고 하거나 신고가 필요하다고 하지 않는 경우에는 ok를, 신고를 요청하거나 응답이 이상한 경우에는 report를
     입력: "{fall_response}"
 
     다음 중 하나만 출력:
@@ -87,10 +87,10 @@ def initialize_agent_components(llm):
     - "no response"
     """)
 
-    check_routine_chain = check_routine_prompt | llm.bind(temperature=0.0)
+    check_routine_chain = check_routine_prompt | llm.bind(temperature=0.1)
     generator_chain = generator_prompt | llm.bind(temperature=0.3)
     check_emergency_chain = check_emergency_prompt | llm.bind(temperature=0.2)
-    task_selector_chain = task_selector_prompt | llm.bind(temperature=0.0)
+    task_selector_chain = task_selector_prompt | llm.bind(temperature=0.2)
 
     
     return {
