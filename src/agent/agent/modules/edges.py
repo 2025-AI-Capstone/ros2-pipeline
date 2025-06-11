@@ -1,19 +1,18 @@
 from agent.modules.AgentState import AgentState
 from typing import Dict
+import re
 
 def task_selector(state: AgentState) -> Dict:
     chain = state["agent_components"]["task_selector_chain"]
     response = chain.invoke({"user_input": state["input"]})
-    print(response.content)
-    task_type = response.content.strip()
+    print("[Raw LLM output]:", response.content)
     
-    if "call_weather" in task_type:
-        task_type = "call_weather"
-    elif "call_news" in task_type:
-        task_type = "call_news"
-    elif "call_routine" in task_type:
-        task_type = "call_routine"
-    elif task_type not in ["call_weather", "call_news", "call_routine", "normal"]:
+    # LLM 응답 후처리
+    raw_output = response.content.strip().lower()
+    task_type = re.sub(r'[^a-z_]', '', raw_output)  # 마침표, 따옴표, 종결어미 제거 등
+    
+    # 안정성 검증 및 fallback 처리
+    if task_type not in ["call_weather", "call_news", "call_routine", "normal"]:
         task_type = "normal"
     
     print("task_type:", task_type)
