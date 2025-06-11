@@ -87,24 +87,22 @@ def get_news(state: AgentState) -> Dict[str, Any]:
     return state
 
 
-def get_db(state: AgentState) -> Dict[str, Any]:
+def post_routine(state: AgentState) -> Dict[str, Any]:
     login_url = "http://localhost:8000/login"
     routine_url = "http://localhost:8000/routines"
 
-    routine_payload = state.get("routine_data")
+    routine_payload = state.get("check_routine")
     credentials = {"name": "홍길동", "password": "1234"}
 
-    print(f"get_db Routine payload received: {routine_payload}")
 
     if not routine_payload or "name" not in credentials or "password" not in credentials:
         state["db_info"] = False
         state["routine_result_message"] = "루틴 등록에 필요한 정보가 부족합니다."
-        print("get_db Missing routine payload or credentials.")
         return state
 
     try:
         # 1. 로그인 요청
-        print("get_db Attempting login...")
+        print("post_routine Attempting login...")
         login_res = requests.post(login_url, json=credentials, timeout=5)
         login_res.raise_for_status()
         session_id = login_res.cookies.get("session_id")
@@ -112,32 +110,21 @@ def get_db(state: AgentState) -> Dict[str, Any]:
         if not session_id:
             state["db_info"] = False
             state["routine_result_message"] = "로그인에 실패했습니다: 세션 ID 없음."
-            print("get_db Login failed: No session ID.")
             return state
-        print("get_db Login successful.")
 
         # 2. 루틴 등록 요청
         headers = {
             "Cookie": f"session_id={session_id}"
         }
-        print("get_db Attempting routine registration...")
         routine_res = requests.post(routine_url, json=routine_payload, headers=headers, timeout=5)
         routine_res.raise_for_status()
 
-        print(f"get_db Routine registration response status: {routine_res.status_code}")
-        print(f"get_db Routine registration response body: {routine_res.text}")
-
         state["db_info"] = True
         state["routine_result_message"] = "루틴이 성공적으로 등록되었습니다."
-        print("get_db Routine registration successful.")
-    except requests.exceptions.RequestException as e:
-        state["db_info"] = False
-        state["routine_result_message"] = f"루틴 등록 중 오류 발생: {e}"
-        print(f"get_db Routine registration failed due to request error: {e}")
+
     except Exception as e: # Catch any other unexpected errors
         state["db_info"] = False
-        state["routine_result_message"] = f"알 수 없는 오류로 루틴 등록에 실패했습니다: {e}"
-        print(f"get_db Routine registration failed due to unknown error: {e}")
+        state["routine_result_message"] = "알 수 없는 오류로 루틴 등록에 실패했습니다"
     return state
 
 
@@ -154,9 +141,7 @@ def generator(state: AgentState) -> Dict[str, Any]:
         "user_input": state.get("input", ""),
         "weather_info": state.get("weather_info", ""),
         "news_info": state.get("news_info", ""),
-        "check_routine": str(state.get("check_routine", "")),
-        "db_info": str(state.get("db_info", False)),
-        "fall_alert": str(state.get("fall_alert", False)),
+        "fall_alert": str(state.get("fall_alert", False))
     })
     state["final_answer"] = response.content
     return state

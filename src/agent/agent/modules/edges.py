@@ -5,14 +5,22 @@ def task_selector(state: AgentState) -> Dict:
     chain = state["agent_components"]["task_selector_chain"]
     response = chain.invoke({"user_input": state["input"]})
     print(response.content)
-    task_type = response.content.strip()  
-    if task_type not in ["call_weather", "call_news", "call_routine", "normal"]:
-        task_type = "normal"             
-
+    task_type = response.content.strip()
+    
+    # 안정성을 위해 입력에 특정 단어 포함 여부를 기반으로 task_type 설정
+    input_lower = state["input"].lower()
+    if "call_weather" in input_lower:
+        task_type = "call_weather"
+    elif "call_news" in input_lower:
+        task_type = "call_news"
+    elif "call_routine" in input_lower:
+        task_type = "call_routine"
+    elif task_type not in ["call_weather", "call_news", "call_routine", "normal"]:
+        task_type = "normal"
+    
     print("task_type:", task_type)
     state["task_type"] = task_type
     return state
-
 
 def check_routine_edge(state: AgentState) -> Dict:
     check_routine_chain = state["agent_components"].get("check_routine_chain")

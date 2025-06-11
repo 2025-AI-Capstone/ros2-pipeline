@@ -2,7 +2,7 @@ from typing import Dict, Any
 from langgraph.graph import StateGraph, END
 from agent.modules.AgentState import AgentState
 from agent.modules.nodes import (
-    generator, get_weather, get_news, get_db,
+    generator, get_weather, get_news, post_routine,
      send_emergency_report
 )
 from dotenv import load_dotenv
@@ -16,7 +16,7 @@ def run_workflow(input: str, llm: Any, fall_alert: bool = False, agent_component
     workflow.add_node("task_selector", task_selector)
     workflow.add_node("get_weather", get_weather)
     workflow.add_node("get_news", get_news)
-    workflow.add_node("get_db", get_db)
+    workflow.add_node("post_routine", post_routine)
     workflow.add_node("check_routine_edge", check_routine_edge)
     workflow.add_node("generator", generator)
     workflow.add_node("await_voice_response", await_voice_response)
@@ -39,14 +39,14 @@ def run_workflow(input: str, llm: Any, fall_alert: bool = False, agent_component
 
     workflow.add_edge("get_weather", "generator")
     workflow.add_edge("get_news", "generator")
-    workflow.add_edge("get_db", "generator")
+    workflow.add_edge("post_routine", "generator")
     # workflow.add_edge("check_routine_edge", "generator")
 
     workflow.add_conditional_edges(
         "check_routine_edge",
         lambda state: "reject" if state["check_routine"]=="reject" else "call_db",
         {
-            "call_db": "get_db",
+            "call_db": "post_routine",
             "reject": "generator"
         }
     )
