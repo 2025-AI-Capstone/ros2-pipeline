@@ -7,13 +7,11 @@ def task_selector(state: AgentState) -> Dict:
     print(response.content)
     task_type = response.content.strip()
     
-    # 안정성을 위해 입력에 특정 단어 포함 여부를 기반으로 task_type 설정
-    input_lower = state["input"].lower()
-    if "call_weather" in input_lower:
+    if "call_weather" in task_type:
         task_type = "call_weather"
-    elif "call_news" in input_lower:
+    elif "call_news" in task_type:
         task_type = "call_news"
-    elif "call_routine" in input_lower:
+    elif "call_routine" in task_type:
         task_type = "call_routine"
     elif task_type not in ["call_weather", "call_news", "call_routine", "normal"]:
         task_type = "normal"
