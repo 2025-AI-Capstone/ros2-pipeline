@@ -37,7 +37,7 @@ class STTNode(Node):
 
         # Whisper 모델 로드
         start_time = time.time()
-        self.model = whisper.load_model("base")
+        self.model = whisper.load_model("large-v3")
         load_time = time.time() - start_time
         self.logger.info(f'Whisper model loaded in {load_time:.2f} seconds')
 
@@ -102,12 +102,11 @@ class STTNode(Node):
     def trigger_callback(self, msg: Empty):
         self.logger.info('STT trigger received')
         transcription = self.listen_and_transcribe(self.RECORD_SECONDS)
-        if transcription:
-            out = String()
-            out.data = transcription
-            self.publisher.publish(out)
-            self.publish_count += 1
-            self.logger.info(f'Published triggered STT #{self.publish_count}: {transcription}')
+        out = String()
+        out.data = transcription
+        self.publisher.publish(out)
+        self.publish_count += 1
+        self.logger.info(f'Published triggered STT #{self.publish_count}: {transcription}')
 
     def process_audio(self):
         try:

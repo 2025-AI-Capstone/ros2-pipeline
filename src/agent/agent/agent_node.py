@@ -72,17 +72,19 @@ class AgentNode(Node):
         )
 
         self.fall_alert = False
-
+        if answer is None:
+            answer = "죄송합니다. 응답을 생성할 수 없습니다."
+        elif not isinstance(answer, str):
+            answer = str(answer)    
+        
         out = String()
-        out.data = answer.content.strip()
+        out.data = answer
         self.response_publisher.publish(out)
 
-        log = {
-            'query': input_text,
-            'answer': answer.content.strip()
-        }
-        self.send_log(log)
-        self.get_logger().info(f"Published answer: {answer.content}")
+        # 서버 로그 전송 - message를 문자열로 변경
+        log_message = f"Query: {input_text} | Answer: {answer}"
+        self.send_log("talk", log_message)
+        self.get_logger().info(f"Published answer: {answer}")
 
     def fall_alert_callback(self, msg: String):
         out = String()
@@ -91,6 +93,10 @@ class AgentNode(Node):
         self.get_logger().info(f"Published fall alert response: {self.fall_response}")
         self.fall_alert = True
         self.stt_trigger_pub.publish(Empty())
+        
+        # 낙상 알림 로그 전송
+        log_message = f"Fall alert detected | Response: {self.fall_response}"
+        self.send_log("fall_alert", log_message)
 
     def routine_callback(self, msg: String):
         try:
@@ -105,16 +111,15 @@ class AgentNode(Node):
             self.response_publisher.publish(out)
             self.get_logger().info(f"Published routine alert: {response_text}")
 
-            self.send_log({
-                "type": "routine",
-                "received": msg.data,
-                "response": response_text
-            })
+            # 루틴 알림 로그 전송
+            log_message = f"Routine alert: {title} | Time: {alarm_time} | Response: {response_text}"
+            self.send_log("routine", log_message)
 
         except Exception as e:
             self.get_logger().error(f"Failed to handle routine message: {e}")
 
-    def send_log(self, log):
+    def send_log(self, event_type, message, confidence_score=0.8):
+        """서버 스키마에 맞게 로그 전송"""
         if not self.session_id:
             self.get_logger().warn("No valid session. Trying to re-login.")
             self.login()
@@ -124,9 +129,10 @@ class AgentNode(Node):
 
         data = {
             "user_id": self.user_id,
-            "event_type": "talk",
-            "message": log,
-            "confidence_score": 0
+            "event_type": event_type,
+            "message": message,  # 문자열로 변경
+            "status": "completed",  # 필수 필드 추가
+            "confidence_score": confidence_score
         }
 
         headers = {"Cookie": f"session_id={self.session_id}"}
@@ -134,11 +140,11 @@ class AgentNode(Node):
         try:
             response = requests.post(EVENT_LOG_ENDPOINT, json=data, headers=headers, timeout=5)
             if response.status_code == 200:
-                self.get_logger().info("Successfully sent to server.")
+                self.get_logger().info("Successfully sent log to server.")
             elif response.status_code == 401:
                 self.get_logger().warn("Session expired. Re-authenticating.")
                 self.session_id = None
-                self.send_log(log)  # 재시도
+                self.send_log(event_type, message, confidence_score)  # 재시도
             else:
                 self.get_logger().error(f"Server error: {response.status_code} - {response.text}")
         except Exception as e:
