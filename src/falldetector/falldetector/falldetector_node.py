@@ -9,7 +9,7 @@ import torch
 import numpy as np
 import time
 from torch_geometric.data import Data
-from falldetector.model import FallDetectionSGAT, SimpleNN  # ✅ MLP 모델 추가
+from falldetector.model import FallDetectionSGAT, FallDetectionModel
 
 class FallDetectorNode(Node):
     def __init__(self):
@@ -27,10 +27,12 @@ class FallDetectorNode(Node):
         # self.model.load_state_dict(checkpoint['model_state_dict'])
         # self.model.eval()
 
-        # ✅ MLP 모델 초기화
-        self.model_mlp = SimpleNN(input_size=34).to(self.device)
+        self.model_mlp = FallDetectionModel().to(self.device)
         self.model_mlp.load_state_dict(torch.load('./src/falldetector/falldetector/checkpoints/fall_detection_model.pt', map_location=self.device))
         self.model_mlp.eval()
+        
+        # 키포인트 필터링 설정
+        self.zero_threshold = 8
 
         self.create_timer(10, self.printlog)
         self.msg_count = 0
@@ -47,7 +49,14 @@ class FallDetectorNode(Node):
             result_msg.is_fall = Bool(data=False)
 
             for person in people:
-                if np.count_nonzero(person[:, :2]) < 10:
+                # 0값의 개수를 세어서 필터링
+                zero_count = np.count_nonzero(person[:, :2] == 0)
+                total_points = person[:, :2].size  # 17 * 2 = 34개 포인트
+                
+                
+                # 0값이 threshold 이상이면 건너뛰기
+                if zero_count >= self.zero_threshold:
+                    self.get_logger().debug(f"Skipping person: {zero_count} zero values (>= {self.zero_threshold})")
                     continue
 
                 # === 기존 SGAT 처리 (주석 처리) ===
@@ -82,9 +91,15 @@ class FallDetectorNode(Node):
         self.get_logger().info(f'''
         Average msg rate: {average_frame_rate:.2f} MPS
         msg count: {self.msg_count}
+        Zero threshold: {self.zero_threshold}
         ''')
         self.msg_count = 0
         self.start_time = time.time()
+
+    def set_zero_threshold(self, threshold):
+        """0값 개수 임계값을 동적으로 설정하는 함수"""
+        self.zero_threshold = threshold
+        self.get_logger().info(f"Zero threshold updated to: {threshold}")
 
 def keypoints_to_graph(keypoints_np):  # keypoints_np: (18, 3)
     base_edges = [

@@ -44,17 +44,23 @@ class FallDetectionSGAT(nn.Module):
         return torch.sigmoid(x)
 
 
-class SimpleNN(nn.Module):
-    def __init__(self, input_size):
-        super(SimpleNN, self).__init__()
-        self.fc1 = nn.Linear(input_size, 128)  # 첫 번째 은닉층
-        self.fc2 = nn.Linear(128, 64)          # 두 번째 은닉층
-        self.fc3 = nn.Linear(64, 1)            # 출력층
-        self.relu = nn.ReLU()                  # ReLU 활성화 함수
-        self.sigmoid = nn.Sigmoid()            # Sigmoid 출력층
+class FallDetectionModel(nn.Module):
+    def __init__(self, input_size=34, hidden_size=128):
+        super(FallDetectionModel, self).__init__()
+        self.fc1 = nn.Linear(input_size, hidden_size)
+        self.bn1 = nn.BatchNorm1d(hidden_size)
+        self.relu1 = nn.ReLU()
+        self.fc2 = nn.Linear(hidden_size, hidden_size // 2) # Adding another hidden layer
+        self.bn2 = nn.BatchNorm1d(hidden_size // 2)
+        self.relu2 = nn.ReLU()
+        self.fc3 = nn.Linear(hidden_size // 2, 1) # Directly setting output size to 1
 
     def forward(self, x):
-        x = self.relu(self.fc1(x))  # 첫 번째 은닉층 + ReLU
-        x = self.relu(self.fc2(x))  # 두 번째 은닉층 + ReLU
-        x = self.sigmoid(self.fc3(x))  # 출력층 + Sigmoid
-        return x
+        out = self.fc1(x)
+        out = self.bn1(out)
+        out = self.relu1(out)
+        out = self.fc2(out)
+        out = self.bn2(out)
+        out = self.relu2(out)
+        out = self.fc3(out)
+        return torch.sigmoid(out)
