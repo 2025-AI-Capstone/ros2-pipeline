@@ -138,13 +138,17 @@ def initialize_agent_components(llm):
     generator_chain = generator_prompt | llm.bind(temperature=0.3)
     check_emergency_chain = check_emergency_prompt | llm.bind(temperature=0.2)
     task_selector_chain = task_selector_prompt | llm.bind(temperature=0.2)
+    extract_keywords_for_news_chain = PromptTemplate.from_template(
+        """다음 사용자 입력에서 뉴스 검색을 위한 핵심 키워드들을 추출하거나 만들어주세요.\n.\n\n사용자 입력: {user_input}\n키워드:"""
+    ) | llm.bind(temperature=0.1)
 
     
     return {
         "check_routine_chain":check_routine_chain,
         "generator_chain":generator_chain,
         "check_emergency_chain":check_emergency_chain,
-        "task_selector_chain":task_selector_chain
+        "task_selector_chain":task_selector_chain,
+        "extract_keywords_for_news_chain":extract_keywords_for_news_chain
     }
 
 

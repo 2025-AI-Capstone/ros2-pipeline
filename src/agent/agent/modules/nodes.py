@@ -7,6 +7,7 @@ import os
 import urllib
 import datetime
 from datetime import datetime, time
+
 def get_weather(state: AgentState) -> Dict[str, Any]:
     api_key = os.getenv("WEATHER_API_KEY")
     if not api_key:
@@ -52,12 +53,21 @@ def get_news(state: AgentState) -> Dict[str, Any]:
             state["news_info"] = "Error: Missing API credentials"
             return state
 
+        llm = state["llm"]
         user_input = state.get("input", "")
+
         if not user_input:
-            state["news_info"] = "Error: Missing search query"
+            state["news_info"] = "Error: Missing user input for news search"
             return state
 
-        encText = urllib.parse.quote(user_input)
+        news_chain = state["agent_components"]["news_chain"]
+        response = news_chain.invoke({"user_input": user_input})
+        search_query = response.content.strip()
+
+        if not search_query:
+            search_query = user_input # Fallback to original input if keyword extraction fails
+
+        encText = urllib.parse.quote(search_query)
         url = f"https://openapi.naver.com/v1/search/news?query={encText}"
 
         request = urllib.request.Request(url)
