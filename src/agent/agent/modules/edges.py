@@ -44,5 +44,6 @@ def await_voice_response(state: AgentState) -> Dict:
         state["voice_response"] = response
     else:
         state["voice_response"] = "no_response"
-
+    if response == "ok":
+        state['final_answer'] = "알겠습니다. 도움이 필요하면 말씀해주세요"
     return state
