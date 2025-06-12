@@ -27,8 +27,8 @@ class FallAlertNode(Node):
         self.alert_publisher = self.create_publisher(String, 'fall_alert/warning', 10)
 
         self.fall_history = deque()
-        self.fall_window_sec = 5
-        self.threshold_ratio = 0.5
+        self.fall_window_sec = 3
+        self.threshold_ratio = 0.8
         self.last_alert_time = 0
         self.alert_cooldown = 180
 
