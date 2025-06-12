@@ -1,6 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
+from std_srvs.srv import SetBool
 from custom_msgs.msg import CustomBoolean
 from collections import deque
 import requests
@@ -24,6 +25,11 @@ class FallAlertNode(Node):
             self.fall_callback,
             10
         )
+        self.alert_toggle_service = self.create_service(
+            SetBool,
+            'fall_alert/enable_alert',
+            self.toggle_alert_callback
+        )
         self.alert_publisher = self.create_publisher(String, 'fall_alert/warning', 10)
 
         self.fall_history = deque()
@@ -31,7 +37,7 @@ class FallAlertNode(Node):
         self.threshold_ratio = 0.8
         self.last_alert_time = 0
         self.alert_cooldown = 60
-
+        self.alert_enabled = True
         self.user_id = 1
         self.session_id = None
 
@@ -72,6 +78,9 @@ class FallAlertNode(Node):
             self.fall_history.popleft()
 
     def send_alert(self, fall_ratio):
+        if not self.alert_enabled:
+            self.get_logger().info("Fall alert is disabled. Skipping publish.")
+            return
         if not self.session_id:
             self.get_logger().warn("No valid session. Trying to re-login.")
             self.login()
@@ -104,6 +113,13 @@ class FallAlertNode(Node):
                 self.get_logger().error(f"Server error: {response.status_code} - {response.text}")
         except Exception as e:
             self.get_logger().error(f"Failed to send alert to server: {e}")
+    
+    def toggle_alert_callback(self, request, response):
+        self.alert_enabled = request.data
+        response.success = True
+        response.message = f"Fall alert {'enabled' if self.alert_enabled else 'disabled'}"
+        self.get_logger().info(response.message)
+        return response
 
 def main(args=None):
     rclpy.init(args=args)
