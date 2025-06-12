@@ -30,7 +30,7 @@ class FallAlertNode(Node):
         self.fall_window_sec = 4
         self.threshold_ratio = 0.8
         self.last_alert_time = 0
-        self.alert_cooldown = 180
+        self.alert_cooldown = 60
 
         self.user_id = 1
         self.session_id = None

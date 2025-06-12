@@ -31,7 +31,7 @@ def check_routine_edge(state: AgentState) -> Dict:
     return state
 
 def await_voice_response(state: AgentState) -> Dict:
-    fall_response = state.get("user_input", "").strip()
+    fall_response = state["input"]
     check_chain = state["agent_components"].get("check_emergency_chain")
 
     if not fall_response:

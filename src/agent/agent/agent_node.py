@@ -127,7 +127,7 @@ class AgentNode(Node):
         data = {
             "user_id": self.user_id,
             "event_type": log_data.get("event_type", "default"), # Use event_type from log_data or default
-            "message": str(log_data),
+            "message": json.dumps(log_data),
             "status": "agent",
             "confidence_score": log_data.get("confidence_score", 0)
         }
