@@ -1,6 +1,6 @@
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import String
+from std_msgs.msg import String, Empty
 from gtts import gTTS
 import pygame
 import tempfile
@@ -13,14 +13,19 @@ class TTSNode(Node):
     def __init__(self):
         super().__init__('tts_node')
 
-        # LangGraph 혹은 LLM 응답 텍스트 구독
         self.subscription = self.create_subscription(
             String,
             'agent/response',
             self.text_callback,
             10
         )
-
+        self.alert_subscription = self.create_subscription(
+            String,
+            'agent/alert',
+            self.alert_callback,
+            10
+        )
+        self.stt_trigger_pub = self.create_publisher(Empty, 'agent/trigger', 10)
         # Pygame 초기화
         pygame.mixer.init()
 
@@ -39,6 +44,13 @@ class TTSNode(Node):
         except Exception as e:
             self.get_logger().error(f'TTS error: {str(e)}')
 
+    def alert_callback(self, msg):
+        try:
+            self.get_logger().info(f'Received text: {msg.data}')
+            self.speak_alert(msg.data)
+        except Exception as e:
+            self.get_logger().error(f'TTS error: {str(e)}')
+
     def speak(self, text):
         try:
             tts = gTTS(text=text, lang='ko')
@@ -52,6 +64,23 @@ class TTSNode(Node):
 
             os.remove(self.temp_file)
 
+        except Exception as e:
+            self.get_logger().error(f'TTS speak error: {str(e)}')
+
+    def speak_alert(self, text):
+        try:
+            tts = gTTS(text=text, lang='ko')
+            tts.save(self.temp_file)
+
+            pygame.mixer.music.load(self.temp_file)
+            pygame.mixer.music.play()
+
+            while pygame.mixer.music.get_busy():
+                pygame.time.Clock().tick(10)
+
+            os.remove(self.temp_file)
+            self.stt_trigger_pub.publish(Empty())
+            
         except Exception as e:
             self.get_logger().error(f'TTS speak error: {str(e)}')
 

@@ -68,7 +68,7 @@ class FallDetectorNode(Node):
                 input_tensor = torch.tensor(person.flatten(), dtype=torch.float32).unsqueeze(0).to(self.device)
                 confidence = self.model_mlp(input_tensor).squeeze().item()
 
-                if confidence > 0.7:
+                if confidence > 0.6:
                     result_msg.is_fall = Bool(data=True)
                     self.msg_count += 1
                     break

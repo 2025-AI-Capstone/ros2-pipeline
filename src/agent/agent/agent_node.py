@@ -45,7 +45,7 @@ class AgentNode(Node):
 
         # 응답 발행
         self.response_publisher = self.create_publisher(String, 'agent/response', 10)
-        self.stt_trigger_pub = self.create_publisher(Empty, 'agent/trigger', 10)
+        self.alert_publisher = self.create_publisher(String, 'agent/alert', 10)
 
         self.get_logger().info("Agent Node ready")
 
@@ -86,11 +86,10 @@ class AgentNode(Node):
     def fall_alert_callback(self, msg: String):
         out = String()
         out.data = self.fall_response
-        self.response_publisher.publish(out)
+        self.alert_publisher.publish(out)
         self.get_logger().info(f"Published fall alert response: {self.fall_response}")
         self.fall_alert = True
-        self.stt_trigger_pub.publish(Empty())
-
+        
         # Prepare log data as a dictionary for the new send_log signature
         log_data = {'query':"Fall alert detected", 'answer': self.fall_response, 'event_type': 'fall_alert'}
         self.send_log(log_data)
