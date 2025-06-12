@@ -8,6 +8,8 @@ from collections import deque
 import requests
 import time
 import json
+import redis
+import threading
 
 FASTAPI_BASE_URL = "http://localhost:8000"
 LOGIN_ENDPOINT = f"{FASTAPI_BASE_URL}/login"
@@ -26,28 +28,23 @@ class FallAlertNode(Node):
             self.fall_callback,
             10
         )
-        self.alert_toggle_service = self.create_service(
-            SetBool,
-            'fall_alert/enable_alert',
-            self.toggle_alert_callback
-        )
+
         self.alert_publisher = self.create_publisher(String, 'fall_alert/warning', 10)
-        self.alert_status_service = self.create_service(
-            Trigger,
-            'fall_alert/get_alert_status',
-            self.get_alert_status_callback
-        )
+
         self.fall_history = deque()
         self.fall_window_sec = 4
         self.threshold_ratio = 0.8
         self.last_alert_time = 0
         self.alert_cooldown = 60
-        self.alert_enabled = True
         self.user_id = 1
         self.session_id = None
 
         self.login()
         self.get_logger().info("FallAlertNode initialized with session handling.")
+        threading.Thread(target= redis_listener, args=(self,), daemon=True).start()
+        initial_state = self.redis.get("fall_alert_enabled")
+        if initial_state is not None:
+            self.alert_enabled = initial_state.decode() == "true"
 
     def login(self):
         try:
@@ -119,17 +116,20 @@ class FallAlertNode(Node):
         except Exception as e:
             self.get_logger().error(f"Failed to send alert to server: {e}")
     
-    def toggle_alert_callback(self, request, response):
-        self.alert_enabled = request.data
-        response.success = True
-        response.message = f"Fall alert {'enabled' if self.alert_enabled else 'disabled'}"
-        self.get_logger().info(response.message)
-        return response
-    
-    def get_alert_status_callback(self, request, response):
-        response.success = True
-        response.message = "enabled" if self.alert_enabled else "disabled"
-        return response
+def redis_listener(node):
+    r = redis.Redis(host='localhost', port=6379, db=0)
+    pubsub = r.pubsub()
+    pubsub.subscribe("fall_alert_toggle")
+
+    for message in pubsub.listen():
+        if message['type'] != 'message':
+            continue
+        cmd = message['data'].decode()
+        node.get_logger().info(f"[Redis] 수신 명령: {cmd}")
+        if cmd == "enable":
+            node.alert_enabled = True
+        elif cmd == "disable":
+            node.alert_enabled = False
 
 def main(args=None):
     rclpy.init(args=args)
