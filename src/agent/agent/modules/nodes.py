@@ -87,45 +87,65 @@ def get_news(state: AgentState) -> Dict[str, Any]:
     return state
 
 
-def post_routine(state: AgentState) -> Dict[str, Any]:
+
+def post_routine(state: Dict[str, Any]) -> Dict[str, Any]:
     login_url = "http://localhost:8000/login"
     routine_url = "http://localhost:8000/routines"
-
-    routine_payload = state.get("check_routine")
     credentials = {"name": "홍길동", "password": "1234"}
 
-
-    if not routine_payload or "name" not in credentials or "password" not in credentials:
+    # 1. JSON 문자열로 된 routine_payload를 dict로 변환
+    routine_payload_str = state.get("check_routine")
+    try:
+        routine_payload = json.loads(routine_payload_str)
+    except json.JSONDecodeError:
         state["db_info"] = False
-        state["routine_result_message"] = "루틴 등록에 필요한 정보가 부족합니다."
+        state["routine_result_message"] = "루틴 정보(JSON 문자열)를 파싱할 수 없습니다."
         return state
 
+    # 2. alarm_time 문자열 → datetime.time 객체
+    if isinstance(routine_payload.get("alarm_time"), str):
+        try:
+            parsed_time = datetime.strptime(routine_payload["alarm_time"], "%H:%M:%S").time()
+            routine_payload["alarm_time"] = parsed_time
+        except ValueError:
+            state["db_info"] = False
+            state["routine_result_message"] = "alarm_time 형식이 올바르지 않습니다. (예: 09:00:00)"
+            return state
+
+    # 3. alarm_time 객체 → JSON 직렬화 가능한 문자열로 다시 변환
+    if isinstance(routine_payload.get("alarm_time"), time):
+        routine_payload["alarm_time"] = routine_payload["alarm_time"].strftime("%H:%M:%S")
+
     try:
-        # 1. 로그인 요청
+        # 4. 로그인 요청
         print("post_routine Attempting login...")
         login_res = requests.post(login_url, json=credentials, timeout=5)
         login_res.raise_for_status()
-        session_id = login_res.cookies.get("session_id")
 
+        session_id = login_res.cookies.get("session_id")
         if not session_id:
             state["db_info"] = False
             state["routine_result_message"] = "로그인에 실패했습니다: 세션 ID 없음."
             return state
 
-        # 2. 루틴 등록 요청
-        headers = {
-            "Cookie": f"session_id={session_id}"
-        }
+        # 5. 루틴 등록 요청 (주의: json.dumps() 말고 dict로 전달해야 함)
+        headers = {"Cookie": f"session_id={session_id}"}
         routine_res = requests.post(routine_url, json=routine_payload, headers=headers, timeout=5)
         routine_res.raise_for_status()
 
         state["db_info"] = True
         state["routine_result_message"] = "루틴이 성공적으로 등록되었습니다."
 
-    except Exception as e: # Catch any other unexpected errors
+    except requests.HTTPError as http_err:
         state["db_info"] = False
-        state["routine_result_message"] = "알 수 없는 오류로 루틴 등록에 실패했습니다"
+        state["routine_result_message"] = f"서버 오류로 루틴 등록 실패: {str(http_err)}"
+    except Exception as e:
+        state["db_info"] = False
+        print(f"[post_routine ERROR]: {e}")
+        state["routine_result_message"] = "알 수 없는 오류로 루틴 등록에 실패했습니다."
+
     return state
+
 
 
 

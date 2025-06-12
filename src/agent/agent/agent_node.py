@@ -92,7 +92,7 @@ class AgentNode(Node):
         self.stt_trigger_pub.publish(Empty())
 
         # Prepare log data as a dictionary for the new send_log signature
-        log_data = {'message':f"Fall alert detected | Response: {self.fall_response}", 'event_type': 'fall_alert'}
+        log_data = {'query':"Fall alert detected", 'answer': self.fall_response, 'event_type': 'fall_alert'}
         self.send_log(log_data)
 
     def routine_callback(self, msg: String):
@@ -104,12 +104,13 @@ class AgentNode(Node):
             response_text = f"지금은 '{title}' 시간입니다."
 
             out = String()
+            
             out.data = response_text
             self.response_publisher.publish(out)
             self.get_logger().info(f"Published routine alert: {response_text}")
 
             # Prepare log data as a dictionary for the new send_log signature
-            log_data = {'message':f"Routine alert: {title} | Time: {alarm_time} | Response: {response_text}", 'event_type': 'routine'}
+            log_data = {'query':"Routine alert","answer": response_text, 'event_type': 'routine'}
             self.send_log(log_data)
 
         except Exception as e:
@@ -127,7 +128,8 @@ class AgentNode(Node):
         data = {
             "user_id": self.user_id,
             "event_type": log_data.get("event_type", "default"), # Use event_type from log_data or default
-            "status": str(log_data),  # Pass the entire log_data dict as status
+            "message": str(log_data),
+            "status": "agent",
             "confidence_score": log_data.get("confidence_score", 0)
         }
 
