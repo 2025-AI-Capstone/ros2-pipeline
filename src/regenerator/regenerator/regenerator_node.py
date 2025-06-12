@@ -21,7 +21,7 @@ class Regenerator(Node):
 
         self.cv_bridge = CvBridge()
 
-        image_sub = message_filters.Subscriber(self, Image, 'camera/image_raw')
+        image_sub = message_filters.Subscriber(self, Image, 'video_publisher/frames')
         bbox_sub = message_filters.Subscriber(self, CustomDetection2D, 'detector/bboxes')
         keypoints_sub = message_filters.Subscriber(self, JointState, 'detector/keypoints')
         fall_sub = message_filters.Subscriber(self, CustomBoolean, 'falldetector/falldets')
