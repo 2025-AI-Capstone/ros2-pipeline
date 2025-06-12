@@ -9,10 +9,9 @@ from dotenv import load_dotenv
 from agent.modules.edges import await_voice_response,task_selector,check_routine_edge
 
 def run_workflow(input: str, llm: Any, fall_alert: bool = False, agent_components: Dict[str, Any] = None) -> str:
-    
     workflow = StateGraph(AgentState)
 
-    # 노드 추가
+    # 노드 정의
     workflow.add_node("task_selector", task_selector)
     workflow.add_node("get_weather", get_weather)
     workflow.add_node("get_news", get_news)
@@ -25,7 +24,7 @@ def run_workflow(input: str, llm: Any, fall_alert: bool = False, agent_component
     # 시작 지점
     workflow.set_entry_point("task_selector")
 
-    # 분기 처리
+    # task_selector 결과 기반 분기 처리
     workflow.add_conditional_edges(
         "task_selector",
         lambda state: state["task_type"],
@@ -33,33 +32,29 @@ def run_workflow(input: str, llm: Any, fall_alert: bool = False, agent_component
             "call_weather": "get_weather",
             "call_news": "get_news",
             "call_routine": "check_routine_edge",
-            "normal": "generator"
+            "normal": "generator",
+            "emergency_voice_check": "await_voice_response"  # ✅ fall_alert 처리 분기
         }
     )
 
+    # 일반 작업 처리 후 generator로 이동
     workflow.add_edge("get_weather", "generator")
     workflow.add_edge("get_news", "generator")
     workflow.add_edge("post_routine", "generator")
-    # workflow.add_edge("check_routine_edge", "generator")
 
+    # 루틴 등록 여부 판단 분기
     workflow.add_conditional_edges(
         "check_routine_edge",
-        lambda state: "reject" if state["check_routine"]=="reject" else "call_db",
+        lambda state: "reject" if state["check_routine"] == "reject" else "call_db",
         {
             "call_db": "post_routine",
             "reject": "generator"
         }
     )
 
-    workflow.add_conditional_edges(
-        "generator",
-        lambda state: "voice_check" if state.get("fall_alert") else "end",
-        {
-            "voice_check": "await_voice_response",
-            "end": END
-        }
-    )
+    workflow.add_edge("generator", END)
 
+    # 낙상 후 음성 응답 결과 처리
     workflow.add_conditional_edges(
         "await_voice_response",
         lambda state: state["voice_response"],
@@ -72,10 +67,11 @@ def run_workflow(input: str, llm: Any, fall_alert: bool = False, agent_component
 
     workflow.add_edge("send_emergency_report", END)
 
+    # 실행
     app = workflow.compile()
 
     initial_state = {
-        "input" : input,
+        "input": input,
         "llm": llm,
         "fall_alert": fall_alert,
         "agent_components": agent_components or {},

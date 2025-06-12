@@ -3,24 +3,19 @@ from typing import Dict
 import re
 
 def task_selector(state: AgentState) -> Dict:
+    if state.get("fall_alert"):
+        state["task_type"] = "emergency_voice_check"
+        return state
+
     chain = state["agent_components"]["task_selector_chain"]
     response = chain.invoke({"user_input": state["input"]})
     print("[Raw LLM output]:", response.content)
-    
+
     raw_output = response.content.strip().lower()
-
-    # 허용된 작업 유형
     allowed = ["call_weather", "call_news", "call_routine", "normal"]
+    found = [task for task in allowed if task in raw_output]
 
-    # 정확한 단어만 출력한 경우
-    if raw_output in allowed:
-        task_type = raw_output
-    else:
-        # 출력 중에 허용된 단어가 포함되어 있으면 추출
-        found = [task for task in allowed if task in raw_output]
-        task_type = found[0] if found else "normal"
-
-    print("task_type:", task_type)
+    task_type = found[0] if found else "normal"
     state["task_type"] = task_type
     return state
 
