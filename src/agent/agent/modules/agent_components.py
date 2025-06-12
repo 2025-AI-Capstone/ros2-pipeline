@@ -99,7 +99,7 @@ def initialize_agent_components(llm):
 
     위 항목 중 **실제로 값이 존재하는 정보만** 사용해 응답하세요.
     정보를 **있는 그대로만** 전달하고, 그 외 다른 문장(예: 질문, 제안, 인사말, 마무리 등)은 절대 포함하지 마세요.
-    한글만 사용하고, 반드시 구어체로 작성하세요.
+    한글만 사용하고, 반드시 구어체로 작성하세요. 존댓말로 작성하세요.
     """)
     ])
 
@@ -138,7 +138,7 @@ def initialize_agent_components(llm):
     generator_chain = generator_prompt | llm.bind(temperature=0.3)
     check_emergency_chain = check_emergency_prompt | llm.bind(temperature=0.2)
     task_selector_chain = task_selector_prompt | llm.bind(temperature=0.2)
-    extract_keywords_for_news_chain = PromptTemplate.from_template(
+    news_chain = PromptTemplate.from_template(
         """다음 사용자 입력에서 뉴스 검색을 위한 핵심 키워드들을 추출하거나 만들어주세요.\n.\n\n사용자 입력: {user_input}\n키워드:"""
     ) | llm.bind(temperature=0.1)
 
@@ -148,7 +148,7 @@ def initialize_agent_components(llm):
         "generator_chain":generator_chain,
         "check_emergency_chain":check_emergency_chain,
         "task_selector_chain":task_selector_chain,
-        "extract_keywords_for_news_chain":extract_keywords_for_news_chain
+        "news_chain":news_chain
     }
 
 

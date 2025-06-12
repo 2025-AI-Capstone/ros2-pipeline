@@ -26,7 +26,7 @@ class AgentNode(Node):
         # initialize LangGraph LLM + components
         self.llm = ChatOpenAI(
             temperature=0.7,
-            model_name="gpt-3.5-turbo",
+            model_name="gpt-4o-mini", # Use gpt-4o-mini for better performance
             openai_api_key=os.getenv("OPENAI_API_KEY")
         )
         self.agent_components = initialize_agent_components(self.llm)
