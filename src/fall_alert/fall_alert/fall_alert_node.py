@@ -1,8 +1,9 @@
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
-from std_srvs.srv import SetBool
+from std_srvs.srv import SetBool, Trigger
 from custom_msgs.msg import CustomBoolean
+from std_srvs.srv import Trigger
 from collections import deque
 import requests
 import time
@@ -31,7 +32,11 @@ class FallAlertNode(Node):
             self.toggle_alert_callback
         )
         self.alert_publisher = self.create_publisher(String, 'fall_alert/warning', 10)
-
+        self.alert_status_service = self.create_service(
+            Trigger,
+            'fall_alert/get_alert_status',
+            self.get_alert_status_callback
+        )
         self.fall_history = deque()
         self.fall_window_sec = 4
         self.threshold_ratio = 0.8
@@ -119,6 +124,11 @@ class FallAlertNode(Node):
         response.success = True
         response.message = f"Fall alert {'enabled' if self.alert_enabled else 'disabled'}"
         self.get_logger().info(response.message)
+        return response
+    
+    def get_alert_status_callback(self, request, response):
+        response.success = True
+        response.message = "enabled" if self.alert_enabled else "disabled"
         return response
 
 def main(args=None):
